@@ -1,26 +1,338 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================================
+   CERIUM CHEMICALS — DESIGN TOKENS
+   ----------------------------------------------------------------------------
+   Single source of truth for colour, type, space, radius, elevation & motion.
+   Components must never hardcode a hex value. Add a token here instead.
+
+   Colour rationale (derived from supplied brand material, not invented):
+   - The 2026 printed catalogue is green-dominant with blue as accent, so green
+     is the primary identity.
+   - The supplied logo is pure #0000FF. Pure blue is visually crude on screen
+     and unusable for UI, so it is refined to --color-secondary below and used
+     strictly as a supporting accent so it never competes with green.
+   - Contrast is documented per token. Tokens marked GRAPHICAL ONLY fall below
+     4.5:1 on white and must not carry small body text.
+   ========================================================================== */
+
+@theme {
+  /* --- Brand green scale -------------------------------------------------- */
+  --color-green-50: #f1f8f3;
+  --color-green-100: #dceee3;
+  --color-green-200: #b9dcc7;
+  --color-green-300: #8ac2a3;
+  --color-green-400: #55a17c;
+  --color-green-500: #2f855a;
+  --color-green-600: #21683f;
+  --color-green-700: #1a5333;
+  --color-green-800: #164229;
+  --color-green-900: #10301e;
+  --color-green-950: #081b11;
+
+  /* --- Semantic brand ----------------------------------------------------- */
+  /* 6.90:1 on white — AA body text, AAA large */
+  --color-primary: var(--color-green-600);
+  /* 14.6:1 with white text — used for large dark surfaces */
+  --color-primary-dark: var(--color-green-900);
+  /* 4.73:1 on --color-primary-dark — AA text on dark green */
+  --color-primary-light: var(--color-green-400);
+  --color-primary-soft: var(--color-green-50);
+  --color-primary-muted: var(--color-green-100);
+
+  /* Vivid catalogue green. 3.31:1 on white — GRAPHICAL ONLY.
+     Rules, icons, underlines, large display numerals. Never small text. */
+  --color-accent: #34a05f;
+
+  /* Refined logo blue. 7.78:1 on white — safe for text and links. */
+  --color-secondary: #1d3fd1;
+  --color-secondary-dark: #14299a;
+  --color-secondary-soft: #eef2fe;
+
+  /* --- Neutrals (faint green cast for cohesion) --------------------------- */
+  --color-ink: #0f1512;
+  --color-text: #1a211d;
+  --color-text-muted: #5a6560; /* 5.99:1 on white — AA */
+  --color-text-light: #7a847f; /* 3.86:1 — GRAPHICAL / large text only */
+  --color-text-inverse: #ffffff;
+
+  --color-background: #ffffff;
+  --color-background-soft: #f6f8f7;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f1f4f2;
+
+  --color-border: #e3e8e5;
+  --color-border-strong: #c9d2cd;
+  --color-border-inverse: rgb(255 255 255 / 0.16);
+
+  /* --- Status ------------------------------------------------------------- */
+  --color-success: #1f7a3d;
+  --color-warning: #b4690e;
+  --color-error: #b42318;
+
+  /* --- Typography --------------------------------------------------------- */
+  /* Bound to next/font CSS variables in layout.tsx */
+  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-newsreader), ui-serif, Georgia, serif;
+
+  /* Fluid display sizes — clamp() so hierarchy adapts without breakpoint jumps */
+  --text-display: clamp(2.75rem, 1.6rem + 5.2vw, 6rem);
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.025em;
+
+  --text-h1: clamp(2.25rem, 1.5rem + 3.2vw, 4rem);
+  --text-h1--line-height: 1.04;
+  --text-h1--letter-spacing: -0.02em;
+
+  --text-h2: clamp(1.75rem, 1.25rem + 2.1vw, 3rem);
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.018em;
+
+  --text-h3: clamp(1.375rem, 1.1rem + 1.1vw, 1.875rem);
+  --text-h3--line-height: 1.2;
+  --text-h3--letter-spacing: -0.012em;
+
+  --text-h4: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
+  --text-h4--line-height: 1.3;
+  --text-h4--letter-spacing: -0.008em;
+
+  --text-lead: clamp(1.0625rem, 1rem + 0.45vw, 1.3125rem);
+  --text-lead--line-height: 1.55;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.65;
+
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.6;
+
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.5;
+
+  /* Eyebrow / label — the recurring editorial device across sections */
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.14em;
+
+  --text-nav: 0.9375rem;
+  --text-nav--line-height: 1.4;
+
+  --text-button: 0.9375rem;
+  --text-button--line-height: 1;
+  --text-button--letter-spacing: 0.005em;
+
+  /* --- Radius (restrained — this is not a rounded-card website) ----------- */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+
+  /* --- Elevation (used sparingly; borders do most of the separation) ------ */
+  --shadow-subtle: 0 1px 2px rgb(15 21 18 / 0.04);
+  --shadow-card: 0 2px 4px rgb(15 21 18 / 0.04), 0 8px 24px rgb(15 21 18 / 0.05);
+  --shadow-menu: 0 1px 2px rgb(15 21 18 / 0.05), 0 16px 40px rgb(15 21 18 / 0.1);
+
+  /* --- Motion ------------------------------------------------------------- */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --duration-fast: 160ms;
+  --duration-base: 260ms;
+  --duration-slow: 420ms;
+  /* Reveal is the slowest thing on the site by design, but kept under ~600ms —
+     beyond that a section entering the viewport reads as lag rather than poise. */
+  --duration-reveal: 560ms;
+
+  /* --- Layout ------------------------------------------------------------- */
+  --container-content: 1320px;
+  --container-narrow: 760px;
+  --spacing-header: 76px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ============================================================================
+   BASE
+   ========================================================================== */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    /* Offset in-page anchors so the sticky header never covers a heading */
+    scroll-padding-top: calc(var(--spacing-header) + 1.5rem);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 500;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Media defaults so a missing width/height can never blow out a layout */
+  img,
+  svg,
+  video {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* --- Focus ------------------------------------------------------------- */
+  /* Visible on keyboard only, but never suppressed without a replacement. */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+    border-radius: var(--radius-xs);
+  }
+
+  /* On dark green surfaces the primary outline would disappear */
+  .on-dark :focus-visible {
+    outline-color: var(--color-primary-light);
+  }
+
+  ::selection {
+    background-color: var(--color-green-200);
+    color: var(--color-green-950);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ============================================================================
+   MOTION SYSTEM
+   ----------------------------------------------------------------------------
+   CSS-only. No animation library is used — reveals are driven by a single
+   IntersectionObserver in <Reveal /> which flips [data-revealed].
+   ========================================================================== */
+
+@layer utilities {
+  /* Section / element reveal. Starts hidden only when JS will observe it. */
+  [data-reveal] {
+    opacity: 0;
+    transform: translate3d(0, var(--reveal-y, 18px), 0);
+    transition:
+      opacity var(--duration-reveal) var(--ease-out-soft),
+      transform var(--duration-reveal) var(--ease-out-soft);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+  }
+
+  [data-reveal][data-revealed="true"] {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* Failsafe: if JS never runs, content must still be visible and readable. */
+  .no-js [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Slow, subtle scale used behind hero / editorial imagery */
+  @keyframes cerium-drift {
+    from {
+      transform: scale(1.06);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  .animate-drift {
+    animation: cerium-drift 2400ms var(--ease-out-soft) both;
+  }
+
+  /* Hairline that draws itself in — the recurring section-opener device */
+  @keyframes cerium-rule {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  .animate-rule {
+    transform-origin: left center;
+    animation: cerium-rule var(--duration-slow) var(--ease-out-soft) both;
+  }
+
+  /* Mega-menu panel entrance */
+  @keyframes cerium-menu-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, -6px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* Mobile drawer entrance */
+  @keyframes cerium-drawer-in {
+    from {
+      transform: translate3d(100%, 0, 0);
+    }
+    to {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* Horizontal rails: hide the scrollbar but keep the element scrollable,
+     keyboard-reachable and swipeable. Never disables scrolling itself. */
+  .rail-scroll {
+    scrollbar-width: none;
+  }
+
+  .rail-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   REDUCED MOTION
+   Honour the OS setting globally. Content must always end in its final state —
+   never hidden — so this cannot hide content from anyone.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
