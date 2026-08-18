@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // Emits a self-contained .next/standalone build (minimal node_modules
+  // subset + server.js) so the production Docker image doesn't need to ship
+  // the full node_modules tree.
+  output: "standalone",
+
   // Do not leak the framework version in response headers.
   poweredByHeader: false,
 
