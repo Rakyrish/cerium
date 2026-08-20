@@ -20,6 +20,21 @@
  * Django in Phase 2.
  */
 
+/*
+ * SERVER ONLY.
+ *
+ * The catalogue was removed from the client bundle in commit `687827b`, and
+ * until now nothing enforced that. A single `"use client"` on a component that
+ * imports this module would have put all 122 product records back into the
+ * browser with no type error, no lint error and no build failure — a
+ * regression visible only to someone re-probing the emitted chunks.
+ *
+ * This turns that convention into a build error. Client components receive
+ * catalogue-derived data as props from a server parent; see the navigation
+ * accessors in `src/lib/content.ts`.
+ */
+import "server-only";
+
 import type { Category, ImageRef, ProductSummary, SourceDocument } from "@/types/content";
 import overridesData from "@/data/catalogue.overrides.json";
 
@@ -30,7 +45,16 @@ export interface CategoryOverride {
   /** Attach beneath an existing category. Omit for a new top-level family. */
   parentSlug?: string;
   image?: ImageRef;
-  source?: SourceDocument;
+  /**
+   * Required, unlike on `Category` itself.
+   *
+   * The reviewed catalogue in `taxonomy.ts` has 100% provenance coverage by
+   * discipline rather than by type. Studio-authored content has no such
+   * discipline behind it — it is written through a form — so the one place a
+   * missing source can actually enter the catalogue is the one place the
+   * compiler insists on it.
+   */
+  source: SourceDocument;
 }
 
 export interface ProductOverride {
@@ -40,9 +64,10 @@ export interface ProductOverride {
   categorySlug: string;
   benefit?: string;
   olfactive?: string;
-  applications?: string[];
+  /** End-product formats, not `Application` slugs. See `ProductSummary.formats`. */
+  formats?: string[];
   image?: ImageRef;
-  source?: SourceDocument;
+  source: SourceDocument;
 }
 
 export interface CatalogueOverrides {
@@ -116,7 +141,7 @@ export function applyOverrides(
       name: entry.name,
       benefit: entry.benefit,
       olfactive: entry.olfactive,
-      applications: entry.applications,
+      formats: entry.formats,
       image: entry.image,
       source: entry.source,
     };

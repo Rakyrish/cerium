@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
+import { SOURCE_DOCUMENTS, type SourceDocument } from "@/types/content";
 import { cn } from "@/lib/cn";
 
 /* -------------------------------------------------------------------------- */
@@ -63,6 +64,66 @@ export function TextArea(props: React.ComponentProps<"textarea">) {
 
 export function Select(props: React.ComponentProps<"select">) {
   return <select {...props} className={cn(controlClass, props.className)} />;
+}
+
+/**
+ * Human-readable names for the supplied Cerium documents.
+ *
+ * Keyed by `SourceDocument` so a new union member is a type error here rather
+ * than a missing option in the dropdown.
+ */
+const SOURCE_LABELS: Record<SourceDocument, string> = {
+  "catalogue-2026": "2026 product catalogue",
+  "pricelist-q3-2026": "Q3 2026 price list",
+  "fragrance-pricelist-q3-2026": "Q3 2026 fragrance price list",
+  "vision-statement": "Vision statement document",
+  logo: "Supplied logo lockup",
+  "website-ceriumchemicals.co.ke": "Live site — ceriumchemicals.co.ke",
+};
+
+/**
+ * Provenance selector. Required on every Studio form.
+ *
+ * There is no default and no "unknown" option, both deliberately. A default
+ * would be guessed provenance wearing the same clothes as recorded provenance,
+ * which is the failure this field was added to remove; an "unknown" option
+ * would let unattributed content into a catalogue whose integrity model assumes
+ * every entry is traceable to a document.
+ *
+ * If the content is not in one of these documents, it should not be entered
+ * here yet — that is the honest answer, and the empty option enforces it by
+ * blocking the submit.
+ */
+export function SourceField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Field
+      label="Source document"
+      required
+      hint="Which supplied Cerium document this content is taken from. If it is not in one of these, do not add it yet."
+    >
+      {(id) => (
+        <Select
+          id={id}
+          required
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          <option value="">Select the source document…</option>
+          {SOURCE_DOCUMENTS.map((document) => (
+            <option key={document} value={document}>
+              {SOURCE_LABELS[document]}
+            </option>
+          ))}
+        </Select>
+      )}
+    </Field>
+  );
 }
 
 export function SubmitButton({

@@ -5,6 +5,7 @@ import type {
   CategoryOverride,
   ProductOverride,
 } from "@/data/overrides";
+import { isSourceDocument } from "@/types/content";
 import { isStudioEnabled, studioDisabledResponse } from "@/lib/studio-guard";
 import { slugify } from "@/lib/slug";
 
@@ -85,6 +86,27 @@ export async function POST(request: Request) {
     );
   }
 
+  /*
+   * Provenance is supplied by the operator, not assumed.
+   *
+   * This used to hardcode `source: "website-ceriumchemicals.co.ke"` on every
+   * entry the Studio wrote, regardless of where the content actually came from.
+   * On a site whose entire integrity model rests on this field, a value that is
+   * always present and usually wrong is worse than one that is absent — it
+   * looks like an answer. The form now asks, and the answer is validated
+   * against the union rather than trusted.
+   */
+  const source = body.source;
+  if (!isSourceDocument(source)) {
+    return Response.json(
+      {
+        error:
+          "Choose the Cerium document this content came from. Provenance is not optional.",
+      },
+      { status: 400 },
+    );
+  }
+
   const data = await readOverrides();
 
   if (kind === "category") {
@@ -101,7 +123,7 @@ export async function POST(request: Request) {
       summary: text(body.summary),
       parentSlug: text(body.parentSlug),
       image: imageFrom(body),
-      source: "website-ceriumchemicals.co.ke",
+      source,
     };
 
     data.categories.push(category);
@@ -129,8 +151,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const applications = Array.isArray(body.applications)
-      ? body.applications
+    // End-product formats ("Shampoo", "Fabric softener") — not Application
+    // slugs. See `ProductSummary.formats`.
+    const formats = Array.isArray(body.formats)
+      ? body.formats
           .map((value) => text(value))
           .filter((value): value is string => Boolean(value))
       : undefined;
@@ -141,9 +165,9 @@ export async function POST(request: Request) {
       categorySlug,
       benefit: text(body.benefit),
       olfactive: text(body.olfactive),
-      applications: applications?.length ? applications : undefined,
+      formats: formats?.length ? formats : undefined,
       image: imageFrom(body),
-      source: "website-ceriumchemicals.co.ke",
+      source,
     };
 
     data.products.push(product);

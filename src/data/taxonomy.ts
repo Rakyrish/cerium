@@ -27,6 +27,21 @@
  * guessed.
  */
 
+/*
+ * SERVER ONLY.
+ *
+ * The catalogue was removed from the client bundle in commit `687827b`, and
+ * until now nothing enforced that. A single `"use client"` on a component that
+ * imports this module would have put all 122 product records back into the
+ * browser with no type error, no lint error and no build failure — a
+ * regression visible only to someone re-probing the emitted chunks.
+ *
+ * This turns that convention into a build error. Client components receive
+ * catalogue-derived data as props from a server parent; see the navigation
+ * accessors in `src/lib/content.ts`.
+ */
+import "server-only";
+
 import type { Category, ProductSummary } from "@/types/content";
 import { slugify } from "@/lib/slug";
 import { applyOverrides } from "@/data/overrides";
@@ -520,7 +535,7 @@ const fragrances: Category = {
       products: [
         p("All the Time", {
           olfactive: "Vanilla | Ambery | Floral",
-          applications: [
+          formats: [
             "Shampoo",
             "Conditioner",
             "Hair gel",
@@ -531,7 +546,7 @@ const fragrances: Category = {
         }),
         p("Angel Wings", {
           olfactive: "Oriental | White floral",
-          applications: [
+          formats: [
             "Shampoo",
             "Conditioner",
             "Hair gel",
@@ -542,19 +557,19 @@ const fragrances: Category = {
         }),
         p("Bella Rouge", {
           olfactive: "Aromatic | Ambery | Fruity",
-          applications: ["Shampoo", "Shower gel", "Body lotion", "Handwash"],
+          formats: ["Shampoo", "Shower gel", "Body lotion", "Handwash"],
           source: "fragrance-pricelist-q3-2026",
         }),
         p("Berry Splash", {
           olfactive: "Fruity | Berries",
-          applications: ["Handwash", "Body lotion", "Shower gel"],
+          formats: ["Handwash", "Body lotion", "Shower gel"],
           source: "fragrance-pricelist-q3-2026",
         }),
         p("Black Suit", { source: "catalogue-2026" }),
         p("All Sports", { source: "catalogue-2026" }),
         p("Boss Energy", {
           olfactive: "Fougère | Aromatic | Woody",
-          applications: [
+          formats: [
             "Body lotion",
             "Shower gel",
             "After shave",
@@ -564,7 +579,7 @@ const fragrances: Category = {
         }),
         p("Mad Love", {
           olfactive: "Floral | Musky | Powdery",
-          applications: [
+          formats: [
             "Shampoo",
             "Conditioner",
             "Hair gel",
@@ -575,7 +590,7 @@ const fragrances: Category = {
         }),
         p("Mr. Right", {
           olfactive: "Fougère | Oriental | Ambery",
-          applications: [
+          formats: [
             "Body lotion",
             "Shower gel",
             "After shave",
@@ -585,12 +600,12 @@ const fragrances: Category = {
         }),
         p("Ocean Escape", {
           olfactive: "Aromatic | Fougère | Marine",
-          applications: ["Handwash", "Shower gel", "Liquid laundry"],
+          formats: ["Handwash", "Shower gel", "Liquid laundry"],
           source: "fragrance-pricelist-q3-2026",
         }),
         p("Sweet Marshmallow", {
           olfactive: "Fruity | Gourmand",
-          applications: [
+          formats: [
             "Shampoo",
             "Conditioner",
             "Hair gel",
@@ -601,7 +616,7 @@ const fragrances: Category = {
         }),
         p("Tropical Delight", {
           olfactive: "Fruity | Floral | Musky",
-          applications: ["Shampoo", "Shower gel", "Body lotion", "Handwash"],
+          formats: ["Shampoo", "Shower gel", "Body lotion", "Handwash"],
           source: "fragrance-pricelist-q3-2026",
         }),
       ],
@@ -617,18 +632,18 @@ const fragrances: Category = {
         p("Blue Azure 51", { source: "catalogue-2026" }),
         p("Blue Bouquet 05", {
           olfactive: "Chypre | Aromatic | Fruity",
-          applications: ["Fabric softener", "Handwash", "Shower gel"],
+          formats: ["Fabric softener", "Handwash", "Shower gel"],
           source: "catalogue-2026",
         }),
         p("Classic Blue 51", { source: "catalogue-2026" }),
         p("Fresh Blue", {
           olfactive: "Citrus | Woody | Musky",
-          applications: ["Fabric softener", "Handwash", "Shower gel"],
+          formats: ["Fabric softener", "Handwash", "Shower gel"],
           source: "fragrance-pricelist-q3-2026",
         }),
         p("Lavenbud 26", {
           olfactive: "Fruity | Herbal",
-          applications: ["Fabric softener", "Handwash", "Shower gel"],
+          formats: ["Fabric softener", "Handwash", "Shower gel"],
           source: "catalogue-2026",
         }),
         p("Lavender Life 07", { source: "catalogue-2026" }),
@@ -657,7 +672,7 @@ const fragrances: Category = {
         p("Fraise Burst", { source: "catalogue-2026" }),
         p("Lavender Fresh", {
           olfactive: "Aromatic | Woody",
-          applications: ["Liquid multipurpose", "Handwash"],
+          formats: ["Liquid multipurpose", "Handwash"],
           source: "fragrance-pricelist-q3-2026",
         }),
         p("Lavender Protect", { source: "catalogue-2026" }),
