@@ -16,14 +16,31 @@ export type Slug = string;
 /**
  * Provenance marker. Records which supplied document a piece of copy came from
  * so nothing unattributed can quietly become "fact" later.
+ *
+ * The array is the source of truth and the type is derived from it, rather than
+ * the other way round. A bare union cannot be iterated, so anything that has to
+ * *offer* the choices — the Content Studio's source selector, and the API
+ * validation behind it — would otherwise need a hand-maintained second copy of
+ * this list, which is exactly how a provenance vocabulary drifts.
  */
-export type SourceDocument =
-  | "catalogue-2026"
-  | "pricelist-q3-2026"
-  | "fragrance-pricelist-q3-2026"
-  | "vision-statement"
-  | "logo"
-  | "website-ceriumchemicals.co.ke";
+export const SOURCE_DOCUMENTS = [
+  "catalogue-2026",
+  "pricelist-q3-2026",
+  "fragrance-pricelist-q3-2026",
+  "vision-statement",
+  "logo",
+  "website-ceriumchemicals.co.ke",
+] as const;
+
+export type SourceDocument = (typeof SOURCE_DOCUMENTS)[number];
+
+/** Runtime guard, so untrusted input can be narrowed to the union. */
+export function isSourceDocument(value: unknown): value is SourceDocument {
+  return (
+    typeof value === "string" &&
+    (SOURCE_DOCUMENTS as ReadonlyArray<string>).includes(value)
+  );
+}
 
 export interface Sourced {
   /** Which supplied Cerium document this content is taken from. */
@@ -69,8 +86,16 @@ export interface ImageRef {
 export interface Category {
   slug: Slug;
   name: string;
-  /** Short editorial line. Only present where Cerium has supplied wording. */
-  description?: string;
+  /*
+   * There is deliberately no `description` here.
+   *
+   * One previously existed alongside `summary` and was populated on none of the
+   * 30 categories, while `summary` carried the real copy. Two free-text fields
+   * with no rule distinguishing them is how a content model drifts: the second
+   * one gets filled in inconsistently, or gets copied into the Phase 2 Django
+   * schema as a column nobody can define. `Application` and `Industry` keep
+   * `description` because theirs is populated and rendered.
+   */
   /** Verbatim positioning copy from the 2026 catalogue, where available. */
   summary?: string;
   image?: ImageRef;
@@ -103,8 +128,18 @@ export interface ProductSummary {
   categorySlug?: Slug;
   /** Human-readable category label, for card display. */
   categoryName?: string;
-  /** Applications this product is supplied for, per Cerium documents. */
-  applications?: string[];
+  /**
+   * End-product formats this material is supplied for, e.g. "Shampoo",
+   * "Fabric softener". Drawn from `applicationFormats` in
+   * `src/data/applications.ts`.
+   *
+   * NOT the same thing as an `Application`. This field was called
+   * `applications` and held none of the six Application slugs — every value was
+   * a format. Two entities behind one field name is a schema bug waiting to be
+   * copied into PostgreSQL, so the field carries the name of what it actually
+   * holds.
+   */
+  formats?: string[];
   /** Olfactive family — fragrances only. */
   olfactive?: string;
   image?: ImageRef;

@@ -9,6 +9,7 @@ import {
   ImageField,
   Notice,
   Select,
+  SourceField,
   SubmitButton,
   TextArea,
   TextInput,
@@ -28,7 +29,8 @@ export function AddProductForm({ options }: { options: CategoryOption[] }) {
   const [name, setName] = useState("");
   const [benefit, setBenefit] = useState("");
   const [olfactive, setOlfactive] = useState("");
-  const [applications, setApplications] = useState("");
+  const [formats, setFormats] = useState("");
+  const [source, setSource] = useState("");
   const [image, setImage] = useState({ src: "", alt: "" });
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<
@@ -50,7 +52,8 @@ export function AddProductForm({ options }: { options: CategoryOption[] }) {
           categorySlug,
           benefit,
           olfactive,
-          applications: applications
+          source,
+          formats: formats
             .split(",")
             .map((value) => value.trim())
             .filter(Boolean),
@@ -62,10 +65,14 @@ export function AddProductForm({ options }: { options: CategoryOption[] }) {
       if (!response.ok) throw new Error(data.error ?? "Could not save.");
 
       setResult({ tone: "success", message: `Added "${name}".` });
+      // `source` is deliberately NOT reset. Entries are typically added in
+      // runs from one document, and re-selecting it every time invites the
+      // operator to reach for whatever is quickest rather than what is true.
+      // It stays visible in the form, so it cannot go stale unnoticed.
       setName("");
       setBenefit("");
       setOlfactive("");
-      setApplications("");
+      setFormats("");
       setImage({ src: "", alt: "" });
       router.refresh();
     } catch (caught) {
@@ -142,18 +149,20 @@ export function AddProductForm({ options }: { options: CategoryOption[] }) {
       </Field>
 
       <Field
-        label="Applications"
-        hint="Comma separated, e.g. Shampoo, Shower gel, Body lotion."
+        label="End-product formats"
+        hint="Comma separated, e.g. Shampoo, Shower gel, Body lotion. These are formats a customer formulates, not the six site Applications."
       >
         {(id) => (
           <TextInput
             id={id}
-            value={applications}
+            value={formats}
             placeholder="Shampoo, Shower gel"
-            onChange={(event) => setApplications(event.target.value)}
+            onChange={(event) => setFormats(event.target.value)}
           />
         )}
       </Field>
+
+      <SourceField value={source} onChange={setSource} />
 
       <ImageField src={image.src} alt={image.alt} onChange={setImage} />
 

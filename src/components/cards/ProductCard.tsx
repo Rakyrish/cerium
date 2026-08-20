@@ -69,13 +69,18 @@ export function ProductCard({
         <p className="mt-3 text-small text-text-muted">{product.benefit}</p>
       )}
 
-      {product.applications && product.applications.length > 0 && (
+      {product.formats && product.formats.length > 0 && (
         <div className="mt-4">
-          <h4 className="sr-only">Applications for {product.name}</h4>
+          {/* These badges are end-product formats, not the six site
+              Applications. The heading says so, because "Applications for
+              Jojoba Oil" read out before a list of "Shampoo, Shower gel"
+              describes the wrong relationship to anyone using a screen
+              reader. */}
+          <h4 className="sr-only">End-product formats for {product.name}</h4>
           <ul className="flex flex-wrap gap-1.5">
-            {product.applications.map((application) => (
-              <li key={application}>
-                <Badge tone="neutral">{application}</Badge>
+            {product.formats.map((format) => (
+              <li key={format}>
+                <Badge tone="neutral">{format}</Badge>
               </li>
             ))}
           </ul>

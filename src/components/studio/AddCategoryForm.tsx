@@ -8,6 +8,7 @@ import {
   ImageField,
   Notice,
   Select,
+  SourceField,
   SubmitButton,
   TextArea,
   TextInput,
@@ -31,6 +32,7 @@ export function AddCategoryForm({ options }: { options: CategoryOption[] }) {
   const [name, setName] = useState("");
   const [summary, setSummary] = useState("");
   const [parentSlug, setParentSlug] = useState("");
+  const [source, setSource] = useState("");
   const [image, setImage] = useState({ src: "", alt: "" });
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<
@@ -52,6 +54,7 @@ export function AddCategoryForm({ options }: { options: CategoryOption[] }) {
           kind: "category",
           name,
           summary,
+          source,
           parentSlug: parentSlug || undefined,
           imageSrc: image.src,
           imageAlt: image.alt,
@@ -64,6 +67,10 @@ export function AddCategoryForm({ options }: { options: CategoryOption[] }) {
         tone: "success",
         message: `Added "${name}". It is live at /products/${data.slug} once it has products or sub-ranges.`,
       });
+      // `source` is deliberately NOT reset. Entries are typically added in
+      // runs from one document, and re-selecting it every time invites the
+      // operator to reach for whatever is quickest rather than what is true.
+      // It stays visible in the form, so it cannot go stale unnoticed.
       setName("");
       setSummary("");
       setImage({ src: "", alt: "" });
@@ -131,6 +138,8 @@ export function AddCategoryForm({ options }: { options: CategoryOption[] }) {
           </Select>
         )}
       </Field>
+
+      <SourceField value={source} onChange={setSource} />
 
       <ImageField src={image.src} alt={image.alt} onChange={setImage} />
 

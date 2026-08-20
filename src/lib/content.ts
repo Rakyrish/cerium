@@ -43,6 +43,21 @@
  * from a server parent — see `fetchPrimaryNavigation` and `fetchBrowseLists`.
  */
 
+/*
+ * SERVER ONLY.
+ *
+ * The catalogue was removed from the client bundle in commit `687827b`, and
+ * until now nothing enforced that. A single `"use client"` on a component that
+ * imports this module would have put all 122 product records back into the
+ * browser with no type error, no lint error and no build failure — a
+ * regression visible only to someone re-probing the emitted chunks.
+ *
+ * This turns that convention into a build error. Client components receive
+ * catalogue-derived data as props from a server parent; see the navigation
+ * accessors in `src/lib/content.ts`.
+ */
+import "server-only";
+
 import type {
   Application,
   BrowseLists,
