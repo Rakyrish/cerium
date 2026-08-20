@@ -217,6 +217,18 @@ export interface NavLink {
 
 export interface NavColumn {
   title?: string;
+  /**
+   * Makes the column heading itself a link.
+   *
+   * Optional because most columns group links under a label that is not a
+   * destination ("Company", "Resources"). The applications mega-menu is the
+   * case that needs it: its columns are grouped BY industry, so each heading
+   * is already the name of a real page — and while it was plain text, the two
+   * industry pages received no navigation links at all.
+   *
+   * Only set this where the heading names an existing canonical route.
+   */
+  titleHref?: string;
   links: NavLink[];
 }
 

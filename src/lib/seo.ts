@@ -126,7 +126,7 @@ export function breadcrumbSchema(items: Breadcrumb[]) {
  */
 export function itemListSchema(
   name: string,
-  items: Array<{ name: string }>,
+  items: Array<{ name: string; path?: string }>,
 ) {
   return {
     "@context": "https://schema.org",
@@ -137,8 +137,83 @@ export function itemListSchema(
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
+      /*
+       * `url` is emitted whenever the caller can supply one.
+       *
+       * A ListItem carrying only a name tells a crawler that a list exists and
+       * nothing about where its entries live, which wastes the one signal this
+       * markup is good for. It stays optional because the shape is also used
+       * for lists whose items have no page of their own — and a `url` pointing
+       * at a route that does not exist is worse than no `url` at all.
+       */
+      ...(item.path ? { url: absoluteUrl(item.path) } : {}),
     })),
   };
+}
+
+/**
+ * Product schema for a single product page.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IS DELIBERATELY ABSENT, AND WHY
+ * ---------------------------------------------------------------------------
+ * `offers`, `sku`, `gtin`, `brand`, `manufacturer`, `aggregateRating` and
+ * `review` are all omitted. Cerium has supplied none of them: prices exist in
+ * the quarterly price lists but publishing them is a commercial decision that
+ * has not been taken, there are no SKUs in any supplied document, and Cerium
+ * distributes materials it does not necessarily manufacture — so naming a brand
+ * or manufacturer would be a guess about a third party.
+ *
+ * The consequence is accepted knowingly: without `offers` this does not qualify
+ * for a product rich result, and Search Console will report the recommended
+ * field as missing. That is the correct trade. Fabricated offer data is a
+ * manual-action risk and, for a chemicals supplier, a liability question rather
+ * than a marketing one. The fields below are every property the supplied
+ * material actually supports; the schema grows when real data arrives, not
+ * before.
+ *
+ * `category` is the range name from Cerium's own taxonomy, not a guessed
+ * industry classification.
+ */
+export function productSchema({
+  name,
+  path,
+  description,
+  category,
+  image,
+}: {
+  name: string;
+  path: string;
+  description?: string;
+  category?: string;
+  image?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name,
+    url: absoluteUrl(path),
+    ...(description ? { description } : {}),
+    ...(category ? { category } : {}),
+    ...(image ? { image: absoluteUrl(image) } : {}),
+  };
+}
+
+/**
+ * Trim source copy to a sensible meta-description length.
+ *
+ * Cuts on a word boundary so a truncated benefit never ends mid-word. This
+ * shortens Cerium's own wording; it never rewrites or embellishes it, which is
+ * the line that matters — a paraphrased benefit becomes a new claim, a
+ * truncated one stays a quotation.
+ */
+export function metaDescription(text: string, max = 155): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+
+  const cut = clean.slice(0, max - 1);
+  const boundary = cut.lastIndexOf(" ");
+  return `${(boundary > 0 ? cut.slice(0, boundary) : cut).replace(/[,;:.\s]+$/, "")}…`;
 }
 
 /** Serialises JSON-LD safely for inline injection. */

@@ -45,6 +45,7 @@ import "server-only";
 import type { Category, ProductSummary } from "@/types/content";
 import { slugify } from "@/lib/slug";
 import { applyOverrides } from "@/data/overrides";
+import { applyMediaAssignments } from "@/data/media-assignments";
 
 /** Compact product constructor. Keeps this data file readable. */
 function p(
@@ -759,10 +760,21 @@ const reviewedCategories: Category[] = [
 ];
 
 /**
- * The catalogue the site renders: reviewed data with Content Studio additions
- * merged on top. See `src/data/overrides.ts` for why the two are kept apart.
+ * The catalogue the site renders.
+ *
+ * Three layers, applied in order and each with a different rule:
+ *   1. reviewed data transcribed from Cerium's documents (this file);
+ *   2. Studio-authored ADDITIONS, which may never shadow layer 1
+ *      (`src/data/overrides.ts`);
+ *   3. media assignments, which MAY attach to layer 1 because a photograph is
+ *      presentation rather than a claim (`src/data/media-assignments.ts`).
+ *
+ * Media runs last so it can fill a slot on anything the first two produced,
+ * including a product the Studio added in the same session.
  */
-export const categories: Category[] = applyOverrides(reviewedCategories);
+export const categories: Category[] = applyMediaAssignments(
+  applyOverrides(reviewedCategories),
+);
 
 /**
  * Should this category get a page of its own?
@@ -781,6 +793,34 @@ export function isPublishable(category: Category): boolean {
   return (category.products?.length ?? 0) > 0 || (category.children?.length ?? 0) > 0;
 }
 
+/**
+ * Should this category be offered to search engines?
+ *
+ * Narrower than `isPublishable`, and the distinction matters. A category earns
+ * a URL when it has products OR sub-ranges to send visitors to — that is a
+ * navigation question, and a range page listing its sub-ranges is genuinely
+ * useful to someone browsing. It earns an INDEX entry only when there is
+ * actually a product beneath it somewhere, which is a content-quality
+ * question: a page whose entire body is "listings are being prepared" is thin
+ * content, and asking Google to rank it invites the judgement that the site
+ * has thin pages generally.
+ *
+ * The page still exists, still renders, and is still linked from /products.
+ * Only the `robots` directive and the sitemap entry change, and both flip back
+ * the moment a product appears beneath it.
+ *
+ * TODAY THIS AFFECTS EXACTLY ONE CATEGORY: Food Ingredients, which has six
+ * sub-ranges and no product names published anywhere in the supplied material.
+ * This is deliberately expressed as a general rule rather than a check for that
+ * slug — nothing here decides whether Cerium sells food ingredients, which is
+ * the open business question recorded in `docs/pending-cerium-decisions.md`
+ * and is not ours to answer. It decides only that a page with nothing on it is
+ * not a landing page.
+ */
+export function isIndexable(category: Category): boolean {
+  return isPublishable(category) && countProducts(category) > 0;
+}
+
 /** Depth-first walk of the whole tree. */
 export function flattenCategories(nodes: Category[] = categories): Category[] {
   return nodes.flatMap((node) => [node, ...flattenCategories(node.children ?? [])]);
@@ -790,15 +830,57 @@ export function getCategoryBySlug(slug: string): Category | undefined {
   return flattenCategories().find((category) => category.slug === slug);
 }
 
+/**
+ * Stamp the owning category onto a product record.
+ *
+ * A `ProductSummary` in the source data carries no category — the tree
+ * position IS the category. Reading one without recording where it was found
+ * loses the only thing that can build its URL, so every read goes through
+ * here. An explicit `categorySlug` on the record wins, which is what lets the
+ * Content Studio place an override product deliberately.
+ */
+function withCategoryContext(node: Category): ProductSummary[] {
+  return (node.products ?? []).map((product) => ({
+    ...product,
+    categorySlug: product.categorySlug ?? node.slug,
+    categoryName: product.categoryName ?? node.name,
+  }));
+}
+
+/**
+ * Products declared directly on a category, excluding its sub-ranges.
+ *
+ * This is the set that defines a product's canonical URL: it appears under the
+ * range that actually lists it, not under every ancestor that happens to
+ * contain it. `getProductsInCategory` is the browse view; this is the identity
+ * view, and the two must not be confused.
+ */
+export function getOwnProducts(category: Category): ProductSummary[] {
+  return withCategoryContext(category);
+}
+
 /** Every product beneath a category, including nested sub-families. */
 export function getProductsInCategory(category: Category): ProductSummary[] {
-  return flattenCategories([category]).flatMap((node) =>
-    (node.products ?? []).map((product) => ({
-      ...product,
-      categorySlug: product.categorySlug ?? node.slug,
-      categoryName: product.categoryName ?? node.name,
-    })),
-  );
+  return flattenCategories([category]).flatMap(withCategoryContext);
+}
+
+/**
+ * The chain of categories from a top-level family down to `slug`, inclusive.
+ *
+ * Returns an empty array when the slug is unknown, so a caller cannot mistake
+ * "not found" for "top level". Used to build breadcrumbs that reflect the real
+ * tree depth, and to widen the related-products scope one level at a time.
+ */
+export function getCategoryPath(
+  slug: string,
+  nodes: Category[] = categories,
+): Category[] {
+  for (const node of nodes) {
+    if (node.slug === slug) return [node];
+    const descent = getCategoryPath(slug, node.children ?? []);
+    if (descent.length > 0) return [node, ...descent];
+  }
+  return [];
 }
 
 /** All products across the catalogue. */

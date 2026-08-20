@@ -4,6 +4,7 @@ import { Section } from "@/components/ui/Section";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { IndustryCard } from "@/components/cards/ApplicationCard";
 import { CTA } from "@/components/sections/CTA";
+import { BrowseCatalogue } from "@/components/sections/BrowseCatalogue";
 import { Reveal } from "@/components/motion/Reveal";
 import { fetchApplicationsForIndustry, fetchIndustries } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
@@ -36,8 +37,14 @@ export default async function IndustriesPage() {
         ]}
       />
 
-      <Section space="lg">
+      <Section space="lg" ariaLabelledBy="industries-list-heading">
         <Container>
+          {/* Same fix as /applications: the h1 was followed directly by the
+              cards' h3, skipping h2. Hidden because the h1 already reads
+              "Industries". */}
+          <h2 id="industries-list-heading" className="sr-only">
+            Industries we serve
+          </h2>
           <ul className="space-y-8">
             {items.map(({ industry, applications }, index) => (
               <li key={industry.slug}>
@@ -49,6 +56,12 @@ export default async function IndustriesPage() {
           </ul>
         </Container>
       </Section>
+
+      <BrowseCatalogue
+        exclude="/industries"
+        title="Other ways to explore"
+        intro="This page lists the markets Cerium supplies. You can also start from the material itself, or from what you are formulating."
+      />
 
       <CTA />
     </>

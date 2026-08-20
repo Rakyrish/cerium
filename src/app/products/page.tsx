@@ -4,15 +4,19 @@ import { Section } from "@/components/ui/Section";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CategoryCard } from "@/components/cards/CategoryCard";
 import { CTA } from "@/components/sections/CTA";
+import { BrowseCatalogue } from "@/components/sections/BrowseCatalogue";
+import { ProductIndex } from "@/components/sections/ProductIndex";
 import { Reveal } from "@/components/motion/Reveal";
 import { Heading } from "@/components/ui/Heading";
 import { TextLink } from "@/components/ui/Button";
 import {
+  fetchAllProducts,
   fetchCategories,
   fetchProductCount,
   fetchTotalProductCount,
 } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
+import { categoryPath } from "@/lib/routes";
 import { catalogueIntro } from "@/data/company";
 
 export const metadata: Metadata = buildMetadata({
@@ -23,8 +27,11 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default async function ProductsPage() {
-  const categories = await fetchCategories();
-  const total = await fetchTotalProductCount();
+  const [categories, total, allProducts] = await Promise.all([
+    fetchCategories(),
+    fetchTotalProductCount(),
+    fetchAllProducts(),
+  ]);
 
   // Counts are derived for the family and for each sub-family, so a label can
   // never disagree with what is actually listed.
@@ -55,11 +62,41 @@ export default async function ProductsPage() {
         ]}
       />
 
+      {/* Jump navigation.
+          Four families, each an in-page anchor. On a phone the families are
+          otherwise several screens apart, and this is a plain anchor list — no
+          JavaScript, and `scroll-padding-top` in globals.css already keeps the
+          sticky header off the target heading. */}
+      <Section space="sm" tone="soft" ariaLabelledBy="families-heading">
+        <Container>
+          <h2 id="families-heading" className="sr-only">
+            Product families
+          </h2>
+          <ul className="flex flex-wrap gap-x-3 gap-y-3">
+            {withCounts.map(({ category, productCount }) => (
+              <li key={category.slug}>
+                <a
+                  href={`#${category.slug}`}
+                  className="inline-flex items-baseline gap-2 border border-border bg-surface px-4 py-2.5 text-small font-medium text-text transition-colors duration-[var(--duration-fast)] hover:border-primary hover:text-primary"
+                >
+                  {category.name}
+                  {productCount > 0 && (
+                    <span className="text-caption text-text-muted">
+                      {productCount}
+                    </span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      </Section>
+
       <Section space="lg">
         <Container>
           <div className="space-y-20">
             {withCounts.map(({ category, productCount, children }) => (
-              <div key={category.slug}>
+              <div key={category.slug} id={category.slug} className="scroll-mt-32">
                 <Reveal>
                   <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-end md:justify-between">
                     <div className="max-w-2xl">
@@ -79,8 +116,9 @@ export default async function ProductsPage() {
                           {productCount === 1 ? "product" : "products"}
                         </span>
                       )}
-                      <TextLink href={`/products/${category.slug}`}>
+                      <TextLink href={categoryPath(category.slug)}>
                         View range
+                        <span className="sr-only"> — {category.name}</span>
                       </TextLink>
                     </div>
                   </div>
@@ -90,7 +128,7 @@ export default async function ProductsPage() {
                   <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {children.map(({ child, productCount: childCount }, index) => (
                       <li key={child.slug}>
-                        <Reveal delay={(index % 3) * 60}>
+                        <Reveal delay={(index % 3) * 60} className="h-full">
                           <CategoryCard
                             category={child}
                             productCount={childCount}
@@ -107,6 +145,19 @@ export default async function ProductsPage() {
           </div>
         </Container>
       </Section>
+
+      {/* Flat A-Z of the whole catalogue. This is what stops the 122 product
+          pages from depending on their range page as their only inbound link. */}
+      <ProductIndex products={allProducts} />
+
+      {/* Cross-axis signposting. The three index pages are sibling top-level
+          routes, so linking between them asserts no entity relationship —
+          it just lets someone who started from the wrong axis switch. */}
+      <BrowseCatalogue
+        exclude="/products"
+        title="Other ways to explore"
+        intro="This page lists the catalogue by material. If you are starting from what you are formulating, or from the market you sell into, these are the other two routes in."
+      />
 
       <CTA />
     </>
