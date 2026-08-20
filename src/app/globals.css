@@ -250,18 +250,85 @@
     transform: none;
   }
 
-  /* Slow, subtle scale used behind hero / editorial imagery */
-  @keyframes cerium-drift {
-    from {
-      transform: scale(1.06);
+  /* --------------------------------------------------------------------
+     AMBIENT HERO MOTION
+
+     The reference for this is a competitor hero built from autoplaying
+     full-bleed video behind a fullpage.js carousel. Neither half of that is
+     available here: no animation library (a hard rule), no autoplay video (a
+     hard rule), and — decisively — no footage or photography has been supplied
+     at all, so there is nothing to play.
+
+     What the video actually buys on that site is one thing: the background is
+     never completely still. That is reproducible without any asset by drifting
+     the ambient gradient layers the hero already paints, which costs one
+     composited transform per layer, no bytes and no JavaScript.
+
+     Both keyframe sets START AND END AT THE SAME TRANSFORM. That is what makes
+     the reduced-motion block below safe: it freezes every animation at its
+     final frame, and the final frame here is the neutral resting position, so
+     someone who asked for less motion sees exactly the static hero rather than
+     a composition stopped halfway through a drift.
+     -------------------------------------------------------------------- */
+
+  @keyframes cerium-aurora-a {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
     }
-    to {
-      transform: scale(1);
+    50% {
+      transform: translate3d(-3%, 2%, 0) scale(1.12);
+    }
+  }
+
+  @keyframes cerium-aurora-b {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1.06);
+    }
+    50% {
+      transform: translate3d(4%, -2.5%, 0) scale(1);
+    }
+  }
+
+  /*
+   * Two layers on deliberately mismatched, non-multiple durations so the pair
+   * never resolves into a visible loop — the giveaway that turns "alive" back
+   * into "animated GIF". Slow enough (30s+) that the movement registers
+   * peripherally rather than competing with the headline for attention.
+   */
+  .animate-aurora-a {
+    animation: cerium-aurora-a 34s var(--ease-in-out-soft) infinite;
+    will-change: transform;
+  }
+
+  .animate-aurora-b {
+    animation: cerium-aurora-b 47s var(--ease-in-out-soft) infinite;
+    will-change: transform;
+  }
+
+  /*
+   * Slow continuous Ken Burns for the photographic hero.
+   *
+   * Previously a 2400ms one-shot entrance. It is now a loop, because the point
+   * has changed: it is no longer settling the image on arrival, it is keeping
+   * it from going dead still while someone reads the headline. Applies the
+   * moment real photography is supplied — `Hero` already routes the image
+   * through it, so nothing else has to change.
+   */
+  @keyframes cerium-drift {
+    0%,
+    100% {
+      transform: scale(1.04);
+    }
+    50% {
+      transform: scale(1.1);
     }
   }
 
   .animate-drift {
-    animation: cerium-drift 2400ms var(--ease-out-soft) both;
+    animation: cerium-drift 40s var(--ease-in-out-soft) infinite;
+    will-change: transform;
   }
 
   /* Hairline that draws itself in — the recurring section-opener device */
