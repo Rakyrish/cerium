@@ -58,7 +58,23 @@ export function MegaMenu({
             <div key={column.title ?? columnIndex}>
               {column.title && (
                 <h3 className="mb-4 text-eyebrow font-semibold uppercase text-text-muted">
-                  {column.title}
+                  {/*
+                    A heading that names a real page becomes a link to it. The
+                    visible label is unchanged, so the column still reads as a
+                    grouping rather than turning into another list item — the
+                    hover and focus treatment is what marks it as actionable.
+                  */}
+                  {column.titleHref ? (
+                    <Link
+                      href={column.titleHref}
+                      onClick={onNavigate}
+                      className="underline decoration-transparent underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/40"
+                    >
+                      {column.title}
+                    </Link>
+                  ) : (
+                    column.title
+                  )}
                 </h3>
               )}
               {/* A long single column flows into two, keeping one heading and

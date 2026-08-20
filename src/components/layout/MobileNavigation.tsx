@@ -153,7 +153,19 @@ export function MobileNavigation({
                         <div key={column.title ?? columnIndex} className="pt-3">
                           {column.title && (
                             <h3 className="px-5 pb-1 text-eyebrow font-semibold uppercase text-text-muted">
-                              {column.title}
+                              {/* Same rule as the desktop mega-menu: a heading
+                                  that names a real page links to it. */}
+                              {column.titleHref ? (
+                                <Link
+                                  href={column.titleHref}
+                                  onClick={onClose}
+                                  className="underline decoration-transparent underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/40"
+                                >
+                                  {column.title}
+                                </Link>
+                              ) : (
+                                column.title
+                              )}
                             </h3>
                           )}
                           <ul>
