@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useDialog } from "@/hooks/useDialog";
-import { primaryNavigation } from "@/data/navigation";
+import type { NavItem } from "@/types/content";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/cn";
 
@@ -16,13 +16,18 @@ import { cn } from "@/lib/cn";
  * - The primary action and the direct-contact details sit at the bottom, in
  *   thumb reach, because on a phone "call them" is often the actual intent.
  * - The panel scrolls independently while the page behind it is locked.
+ *
+ * `navigation` arrives as a prop from `Header` rather than being imported here,
+ * so the drawer carries no catalogue data into the client bundle.
  */
 export function MobileNavigation({
   open,
   onClose,
+  navigation,
 }: {
   open: boolean;
   onClose: () => void;
+  navigation: NavItem[];
 }) {
   const containerRef = useDialog<HTMLDivElement>(open, onClose);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -81,7 +86,7 @@ export function MobileNavigation({
         {/* Scrollable body */}
         <nav aria-label="Mobile" className="flex-1 overflow-y-auto overscroll-contain">
           <ul className="divide-y divide-border">
-            {primaryNavigation.map((item) => {
+            {navigation.map((item) => {
               const hasChildren = Boolean(item.columns?.length);
               const isOpen = expanded === item.label;
               const panelId = `mobile-panel-${item.label.toLowerCase()}`;

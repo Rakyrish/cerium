@@ -5,7 +5,7 @@ import { Heading } from "@/components/ui/Heading";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/motion/Reveal";
-import { getAllProducts } from "@/data/taxonomy";
+import { fetchProduct } from "@/lib/content";
 import { siteConfig } from "@/config/site";
 import { buildMetadata } from "@/lib/seo";
 
@@ -36,9 +36,7 @@ interface PageProps {
 export default async function ContactPage({ searchParams }: PageProps) {
   const { product: productSlug } = await searchParams;
 
-  const product = productSlug
-    ? getAllProducts().find((item) => item.slug === productSlug)
-    : undefined;
+  const product = productSlug ? await fetchProduct(productSlug) : null;
 
   const subject = product
     ? `Enquiry: ${product.name}`

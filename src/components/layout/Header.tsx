@@ -7,13 +7,28 @@ import { Logo } from "@/components/layout/Logo";
 import { MegaMenu } from "@/components/layout/MegaMenu";
 import { MobileNavigation } from "@/components/layout/MobileNavigation";
 import { SearchOverlay } from "@/components/search/SearchOverlay";
-import { primaryNavigation } from "@/data/navigation";
+import type { BrowseLists, NavItem } from "@/types/content";
 import { cn } from "@/lib/cn";
 
 /** Delay before a hovered menu closes, so diagonal mouse travel is forgiving. */
 const CLOSE_DELAY = 140;
 
-export function Header() {
+/**
+ * Site header.
+ *
+ * Client because of interaction state (which menu is open, scroll position) —
+ * NOT because it needs data at runtime. `navigation` and `browse` are resolved
+ * on the server and passed in, which is what keeps the catalogue out of the
+ * client bundle: this component used to import `primaryNavigation`, and through
+ * it the entire taxonomy, to render a dozen links.
+ */
+export function Header({
+  navigation,
+  browse,
+}: {
+  navigation: NavItem[];
+  browse: BrowseLists;
+}) {
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -132,7 +147,7 @@ export function Header() {
             aria-label="Main"
             className="ml-auto hidden items-center gap-1 lg:flex"
           >
-            {primaryNavigation.map((item) => {
+            {navigation.map((item) => {
               const hasMenu = Boolean(item.columns?.length);
               const menuId = `megamenu-${item.label.toLowerCase()}`;
               const expanded = openMenu === item.label;
@@ -269,8 +284,16 @@ export function Header() {
         </div>
       </header>
 
-      <MobileNavigation open={mobileOpen} onClose={() => setMobileOpen(false)} />
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <MobileNavigation
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        navigation={navigation}
+      />
+      <SearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        browse={browse}
+      />
     </>
   );
 }

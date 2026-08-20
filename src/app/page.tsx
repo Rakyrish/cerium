@@ -10,6 +10,7 @@ import { Applications, Industries } from "@/components/sections/Applications";
 import { Partners, Values } from "@/components/sections/Values";
 import { CTA } from "@/components/sections/CTA";
 import {
+  fetchApplicationFormats,
   fetchApplications,
   fetchApplicationsForIndustry,
   fetchCategories,
@@ -38,11 +39,13 @@ export const metadata: Metadata = buildMetadata({
  * the Django swap in Phase 2 does not touch this file.
  */
 export default async function HomePage() {
-  const [categories, applications, industries] = await Promise.all([
-    fetchCategories(),
-    fetchApplications(),
-    fetchIndustries(),
-  ]);
+  const [categories, applications, industries, applicationFormats] =
+    await Promise.all([
+      fetchCategories(),
+      fetchApplications(),
+      fetchIndustries(),
+      fetchApplicationFormats(),
+    ]);
 
   const categoriesWithCounts: CategoryWithCount[] = await Promise.all(
     categories.map(async (category) => ({
@@ -73,7 +76,7 @@ export default async function HomePage() {
         title="Explore the catalogue in detail"
         categories={subFamilies}
       />
-      <Applications applications={applications} />
+      <Applications applications={applications} formats={applicationFormats} />
       <Industries items={industriesWithApplications} />
       <Values />
       <Partners />

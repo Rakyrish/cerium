@@ -6,8 +6,7 @@ import { ApplicationCard } from "@/components/cards/ApplicationCard";
 import { Badge } from "@/components/ui/Badge";
 import { CTA } from "@/components/sections/CTA";
 import { Reveal } from "@/components/motion/Reveal";
-import { fetchApplications } from "@/lib/content";
-import { applicationFormats } from "@/data/applications";
+import { fetchApplicationFormats, fetchApplications } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -18,7 +17,10 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default async function ApplicationsPage() {
-  const applications = await fetchApplications();
+  const [applications, applicationFormats] = await Promise.all([
+    fetchApplications(),
+    fetchApplicationFormats(),
+  ]);
 
   return (
     <>

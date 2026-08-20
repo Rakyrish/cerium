@@ -185,6 +185,18 @@ export interface NavColumn {
   links: NavLink[];
 }
 
+/**
+ * The browse fallback rendered inside the search overlay.
+ *
+ * Deliberately narrow. `SearchOverlay` is a client component, so this is the
+ * shape of the only catalogue-derived data that may cross into the browser —
+ * labels and hrefs, never records.
+ */
+export interface BrowseLists {
+  families: NavLink[];
+  applications: NavLink[];
+}
+
 export interface NavItem {
   label: string;
   href: string;

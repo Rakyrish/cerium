@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { Logo } from "@/components/layout/Logo";
-import { footerNavigation, legalNavigation } from "@/data/navigation";
+import { legalNavigation } from "@/data/navigation";
+import { fetchFooterNavigation } from "@/lib/content";
 import { siteConfig } from "@/config/site";
 
 /**
@@ -11,8 +12,13 @@ import { siteConfig } from "@/config/site";
  * destination does not exist yet are marked `upcoming` in the navigation data
  * and rendered as plain text with a "Coming soon" note — a footer full of dead
  * links is worse for both visitors and crawlers than an honest short one.
+ *
+ * A Server Component, so it reads its catalogue-derived columns through the
+ * seam directly. `legalNavigation` is static and carries no catalogue data, so
+ * it stays a direct import.
  */
-export function Footer() {
+export async function Footer() {
+  const footerNavigation = await fetchFooterNavigation();
   const year = new Date().getFullYear();
   const socials = siteConfig.social.filter((item) => Boolean(item.href));
 

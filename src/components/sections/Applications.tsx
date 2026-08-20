@@ -6,7 +6,6 @@ import { TextLink } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ApplicationCard, IndustryCard } from "@/components/cards/ApplicationCard";
 import { Reveal } from "@/components/motion/Reveal";
-import { applicationFormats } from "@/data/applications";
 
 /**
  * Applications.
@@ -17,11 +16,17 @@ import { applicationFormats } from "@/data/applications";
  *
  * Uses overlay tiles — visually distinct from the product-family section above
  * so the two discovery routes are not confusable.
+ *
+ * `formats` is passed in rather than imported so this stays a presentational
+ * section with a single source of data — its parent, which reads through the
+ * content seam.
  */
 export function Applications({
   applications,
+  formats,
 }: {
   applications: Application[];
+  formats: ReadonlyArray<string>;
 }) {
   return (
     <Section tone="default" space="lg" ariaLabelledBy="applications-heading">
@@ -73,7 +78,7 @@ export function Applications({
               End products we supply into
             </h3>
             <ul className="mt-4 flex flex-wrap gap-2">
-              {applicationFormats.map((format) => (
+              {formats.map((format) => (
                 <li key={format}>
                   <Badge tone="outline">{format}</Badge>
                 </li>

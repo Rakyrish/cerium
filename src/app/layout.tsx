@@ -3,6 +3,7 @@ import { Inter_Tight, Newsreader } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { siteConfig } from "@/config/site";
+import { fetchBrowseLists, fetchPrimaryNavigation } from "@/lib/content";
 import { jsonLd, organizationSchema, websiteSchema } from "@/lib/seo";
 import "./globals.css";
 
@@ -67,9 +68,23 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-export default function RootLayout({
+/**
+ * Root layout.
+ *
+ * Async because navigation is resolved here, on the server, and passed into the
+ * header as props. `Header` is a client component for interaction reasons only;
+ * resolving its data up here is what keeps the catalogue out of the client
+ * bundle, and it is also the shape the Phase 2 API needs — a client component
+ * cannot await a module-scope import.
+ */
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const [navigation, browse] = await Promise.all([
+    fetchPrimaryNavigation(),
+    fetchBrowseLists(),
+  ]);
+
   return (
     <html
       lang={siteConfig.language}
@@ -87,7 +102,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background antialiased">
-        <Header />
+        <Header navigation={navigation} browse={browse} />
         {/* The skip link in Header targets this id. */}
         <main id="main">{children}</main>
         <Footer />

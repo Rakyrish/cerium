@@ -3,7 +3,7 @@ import { Container } from "@/components/ui/Container";
 import { Section } from "@/components/ui/Section";
 import { Heading, Eyebrow } from "@/components/ui/Heading";
 import { Button } from "@/components/ui/Button";
-import { categories } from "@/data/taxonomy";
+import { fetchCategories } from "@/lib/content";
 
 /**
  * 404.
@@ -14,7 +14,9 @@ import { categories } from "@/data/taxonomy";
  * A dead end is a wasted visit: this offers real routes onward instead of only
  * apologising.
  */
-export default function NotFound() {
+export default async function NotFound() {
+  const categories = await fetchCategories();
+
   return (
     <Section space="xl">
       <Container>

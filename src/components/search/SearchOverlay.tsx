@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useDialog } from "@/hooks/useDialog";
-import { categories } from "@/data/taxonomy";
-import { applications } from "@/data/applications";
+import type { BrowseLists } from "@/types/content";
 import { cn } from "@/lib/cn";
 
 /**
@@ -21,13 +20,20 @@ import { cn } from "@/lib/cn";
  *
  * PHASE 4 connects `onSubmit` to the Django/PostgreSQL search endpoint. The
  * result list will render into `<SearchResults>` below; nothing else changes.
+ *
+ * `browse` arrives as a prop. This component used to import the whole catalogue
+ * to render the browse fallback, and read `name` and `slug` from about ten
+ * records of it — the clearest case in the codebase of a client component
+ * pulling far more data than it uses.
  */
 export function SearchOverlay({
   open,
   onClose,
+  browse,
 }: {
   open: boolean;
   onClose: () => void;
+  browse: BrowseLists;
 }) {
   const [query, setQuery] = useState("");
   const containerRef = useDialog<HTMLDivElement>(open, onClose);
@@ -117,7 +123,7 @@ export function SearchOverlay({
           </div>
         </form>
 
-        <SearchResults query={query} onNavigate={onClose} />
+        <SearchResults query={query} onNavigate={onClose} browse={browse} />
       </div>
     </div>
   );
@@ -133,9 +139,11 @@ export function SearchOverlay({
 function SearchResults({
   query,
   onNavigate,
+  browse,
 }: {
   query: string;
   onNavigate: () => void;
+  browse: BrowseLists;
 }) {
   const hasQuery = query.trim().length > 0;
 
@@ -171,18 +179,12 @@ function SearchResults({
         <BrowseGroup
           title="Product families"
           onNavigate={onNavigate}
-          links={categories.map((category) => ({
-            label: category.name,
-            href: `/products/${category.slug}`,
-          }))}
+          links={browse.families}
         />
         <BrowseGroup
           title="Applications"
           onNavigate={onNavigate}
-          links={applications.map((application) => ({
-            label: application.name,
-            href: `/applications/${application.slug}`,
-          }))}
+          links={browse.applications}
         />
       </div>
     </div>

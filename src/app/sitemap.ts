@@ -19,10 +19,21 @@ import { flattenCategories, isPublishable } from "@/data/taxonomy";
  *
  * `priority` is a weak signal at best; it is set to reflect genuine site
  * structure rather than to game anything.
+ *
+ * NO `lastModified` IS EMITTED, deliberately.
+ *
+ * The only timestamp available here is build time, and stamping that on every
+ * URL tells search engines the entire site changed every time the image is
+ * rebuilt — which is false, and on a new site with a small crawl allocation it
+ * spends that allocation re-crawling pages that did not change. An omitted
+ * lastmod is ignored; a lastmod that is always "now" teaches a crawler to
+ * distrust the whole file.
+ *
+ * The content layer has no per-entity modification date to report (see
+ * `src/types/content.ts`), so there is nothing honest to put here. Phase 2
+ * reinstates this from a real `updated_at` on the database record.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const lastModified = new Date();
-
   const [topCategories, applications, industries] = await Promise.all([
     fetchCategories(),
     fetchApplications(),
@@ -30,12 +41,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: absoluteUrl("/"), changeFrequency: "monthly", priority: 1, lastModified },
-    { url: absoluteUrl("/products"), changeFrequency: "monthly", priority: 0.9, lastModified },
-    { url: absoluteUrl("/applications"), changeFrequency: "monthly", priority: 0.8, lastModified },
-    { url: absoluteUrl("/industries"), changeFrequency: "yearly", priority: 0.7, lastModified },
-    { url: absoluteUrl("/about"), changeFrequency: "yearly", priority: 0.6, lastModified },
-    { url: absoluteUrl("/contact"), changeFrequency: "yearly", priority: 0.6, lastModified },
+    { url: absoluteUrl("/"), changeFrequency: "monthly", priority: 1 },
+    { url: absoluteUrl("/products"), changeFrequency: "monthly", priority: 0.9 },
+    { url: absoluteUrl("/applications"), changeFrequency: "monthly", priority: 0.8 },
+    { url: absoluteUrl("/industries"), changeFrequency: "yearly", priority: 0.7 },
+    { url: absoluteUrl("/about"), changeFrequency: "yearly", priority: 0.6 },
+    { url: absoluteUrl("/contact"), changeFrequency: "yearly", priority: 0.6 },
   ];
 
   // Every category that actually has a page — these earn the long-tail search
@@ -47,21 +58,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: absoluteUrl(`/products/${category.slug}`),
       changeFrequency: "monthly",
       priority: 0.8,
-      lastModified,
     }));
 
   const applicationRoutes: MetadataRoute.Sitemap = applications.map((application) => ({
     url: absoluteUrl(`/applications/${application.slug}`),
     changeFrequency: "monthly",
     priority: 0.7,
-    lastModified,
   }));
 
   const industryRoutes: MetadataRoute.Sitemap = industries.map((industry) => ({
     url: absoluteUrl(`/industries/${industry.slug}`),
     changeFrequency: "yearly",
     priority: 0.6,
-    lastModified,
   }));
 
   return [
