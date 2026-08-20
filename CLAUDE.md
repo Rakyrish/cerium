@@ -35,15 +35,17 @@ Phase 11 = enquiry/quotation system, Phase 14 = production hardening
 | Framework | Next.js **16.3.1**, App Router, React **19.2.8**, TypeScript 5 (strict) |
 | Styling | Tailwind CSS **v4** via `@tailwindcss/postcss`; tokens in `src/app/globals.css` `@theme` |
 | Fonts | `next/font/google` — Inter Tight (UI/body), Newsreader (display serif) |
-| Data | Local typed TS in `src/data/` — **no database, no ORM, no backend in this repo** |
-| Backend | **None yet.** Django + PostgreSQL is Phase 2 and does not exist |
+| Data | **PostgreSQL via Drizzle** (`src/db/`), seeded from the reviewed typed TS in `src/data/`, which remains the build-time and outage fallback |
+| Backend | **This app.** Admin + Postgres live here. Django was dropped — see "Backend decision" below |
+| Auth | Auth.js v5, credentials provider, bcrypt. Accounts created by CLI only |
 | Images | `next/image` via `CeriumImage`; Cloudinary loader wired but **not configured** |
 | Deploy | Docker multi-stage (`node:22-alpine`, `output: "standalone"`) + Caddy 2 reverse proxy/TLS |
 | Tests | **None.** No test runner, no test files, no `test` script (lint + typecheck only) |
 
-Only 4 runtime dependencies: `next`, `react`, `react-dom`, `server-only`. Keep
-it that way — do not add a dependency without asking. `cn()` in `src/lib/cn.ts`
-exists specifically to avoid `clsx`/`tailwind-merge`.
+Runtime dependencies: `next`, `react`, `react-dom`, `server-only`, plus
+`drizzle-orm`, `pg`, `next-auth`, `bcryptjs` for the admin. Still deliberately
+small — do not add another without asking. `cn()` in `src/lib/cn.ts` exists
+specifically to avoid `clsx`/`tailwind-merge`.
 
 ## Commands
 
@@ -54,8 +56,19 @@ npm run start      # next start
 npm run lint       # eslint (flat config, eslint-config-next core-web-vitals + ts)
 npm run typecheck  # tsc --noEmit
 docker compose build web        # production build on the supported runtime
-docker compose up -d --build    # full prod stack (web + caddy)
+docker compose up -d --build    # full prod stack (db + web + caddy)
+
+npm run db:generate   # drizzle-kit: generate a migration from schema changes
+npm run db:migrate    # apply pending migrations (deliberately manual)
+npm run db:seed       # (re)seed Postgres from the reviewed typed catalogue
+npm run db:admin      # create/update an admin account (interactive, needs a TTY)
+npm run db:studio     # drizzle-kit studio, a DB browser
 ```
+
+**First deploy, in order:** `docker compose up -d db` → `npm run db:migrate` →
+`npm run db:seed` → `npm run db:admin` → `docker compose up -d --build`.
+Migrations never run automatically on boot: two replicas starting at once would
+race, and a mistyped env var would run them against the wrong database.
 
 **Node runtime is pinned, not remembered.** `package.json` `engines` requires
 Node >= 20.9 / npm >= 10 (Next 16's floor), `.npmrc` sets `engine-strict=true`
@@ -97,12 +110,18 @@ from `@/data/taxonomy` or `@/data/applications` into pages/components — extend
 and non-catalogue data — `company.ts`, `navigation.ts`, `media.ts` — are
 imported directly today; that is the current convention, not a bug.)
 
-**Frontend/backend separation:** this repo is the frontend only. When the Django
-API arrives it goes in a **separate service**, and the frontend consumes it
-solely through `lib/content.ts` + `apiConfig.baseUrl`. Django/PostgreSQL owns
-persistence, the taxonomy, slugs as stored fields, search, and the authenticated
-admin. Next.js owns rendering, routing, SEO output, and presentation only. Do
-not create Django models, migrations, or an ORM layer in this repo.
+**Backend decision (supersedes the Django plan).** Django + PostgreSQL as a
+separate service was the plan through Phase 2.3B. It was dropped in favour of an
+admin inside this Next.js app, backed by Postgres via Drizzle, with Cloudinary
+for media. Anything in `docs/` describing a Django API describes the superseded
+plan; the entity model in `docs/phase-2-2a-schema-specification.md` is still
+authoritative and `src/db/schema.ts` follows it.
+
+`lib/content.ts` is still the only seam. It now resolves Postgres first and
+falls back to the reviewed typed data when no database is reachable — which is
+what lets `next build` prerender inside a Docker stage with no `db` service, and
+keeps the site serving during a database outage. **Do not delete `src/data/`**:
+it is the seed, the build-time source and the outage floor.
 
 ## Routing
 
@@ -121,15 +140,27 @@ pages cannot ship.
 
 ## API structure
 
-The only API routes are `src/app/api/studio/*` — the **Content Studio**, a
-local authoring tool at `/studio` that writes `src/data/catalogue.overrides.json`
-and `public/images/`. It is hard-disabled outside development via
-`src/lib/studio-guard.ts` and has **no authentication by design**. Never expose
-it, never add auth to promote it into an admin panel, never make it write to
-`taxonomy.ts` — the reviewed catalogue stays reviewed code, Studio additions
-stay in the overrides JSON and are merged at load by `src/data/overrides.ts`.
+Two API surfaces:
 
-There is no public API. `robots.ts` disallows `/api/`.
+- `src/app/api/auth/*` — Auth.js callbacks for the admin.
+- `src/app/api/studio/*` — the legacy **Content Studio** at `/studio`, still
+  hard-disabled outside development by `src/lib/studio-guard.ts`. Superseded by
+  `/admin`; it writes to the source tree and cannot work on a deployed
+  container. Remove it once the admin has fully replaced it.
+
+`robots.ts` disallows `/api/`, and `/admin` sets its own `noindex` so it stays
+unindexed regardless of the site-wide indexing flag.
+
+**The admin (`/admin`).** Authenticated, deployable, writes to Postgres.
+Authorisation lives in `requireUser()` / `requireUserForAction()`
+(`src/lib/admin-guard.ts`) and **every page and every Server Action calls one of
+them**. `src/middleware.ts` only redirects on a missing cookie — it runs on the
+Edge runtime where bcrypt and `pg` cannot load, so it is a UX affordance, never
+the security boundary. A Server Action is a POST endpoint reachable without
+rendering its page; guarding the layout does not guard the action.
+
+Accounts are created only by `npm run db:admin`. There is no sign-up route, no
+password-reset endpoint and no user-management screen, on purpose.
 
 ## Design system (Phase 1 rules)
 
@@ -195,6 +226,8 @@ risk.
   price/availability/SKU data exists.
 - `sitemap.ts` is generated from the same data that generates the routes, so it
   cannot list a page that does not exist. Never hand-maintain it.
+- **Admin writes call `revalidatePath("/", "layout")`.** The public site is
+  statically generated, so without that an edit saves and appears to do nothing.
 - `robots.ts` **disallows everything unless `NEXT_PUBLIC_ALLOW_INDEXING=true`**.
   That default is deliberate — an indexed staging site is far worse than a
   temporarily blocked production one.
@@ -296,3 +329,13 @@ risk.
     Do not make it fake results; it connects to a real backend in Phase 4.
 11. The contact page has no working form — an enquiry system is Phase 11, and a
     form that silently discards submissions is worse than none.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
