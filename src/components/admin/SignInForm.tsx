@@ -7,9 +7,13 @@ import { signIn } from "next-auth/react";
 /**
  * Sign-in form.
  *
- * The error message is deliberately identical for an unknown email and a wrong
- * password. Distinguishing them tells an attacker which addresses have
- * accounts, which is the first step of a targeted attempt.
+ * The error message is deliberately identical for an unknown account and a
+ * wrong password. Distinguishing them tells an attacker which addresses have
+ * accounts, which is the first step of a targeted attempt. The backend returns
+ * one message for every failure for the same reason.
+ *
+ * Either an email or a Django username is accepted: these are the same
+ * credentials as /django-admin/, verified against the same `auth_user` row.
  */
 export function SignInForm({
   from,
@@ -31,7 +35,7 @@ export function SignInForm({
 
     const form = new FormData(event.currentTarget);
     const result = await signIn("credentials", {
-      email: String(form.get("email") ?? ""),
+      identifier: String(form.get("identifier") ?? ""),
       password: String(form.get("password") ?? ""),
       redirect: false,
     });
@@ -62,13 +66,13 @@ export function SignInForm({
       )}
 
       <div>
-        <label htmlFor="email" className="text-small font-medium text-text">
-          Email
+        <label htmlFor="identifier" className="text-small font-medium text-text">
+          Email or username
         </label>
         <input
-          id="email"
-          name="email"
-          type="email"
+          id="identifier"
+          name="identifier"
+          type="text"
           autoComplete="username"
           required
           className="mt-2 h-11 w-full rounded-sm border border-border bg-surface px-3 text-small"

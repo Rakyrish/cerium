@@ -21,8 +21,19 @@ import { catalogueIntro } from "@/data/company";
 
 export const metadata: Metadata = buildMetadata({
   title: "Products",
+  /*
+   * 145 characters, down from 172.
+   *
+   * The previous wording exceeded the ~160 that search results display and was
+   * truncated mid-phrase. The length came from saying "personal care" twice:
+   * once in "cosmetic and personal care ingredients" and again in the trailing
+   * "for personal care and home care". Removing the duplicated qualifier is the
+   * whole edit — the four named families are Cerium's own top-level taxonomy
+   * (Natural Extracts, Skin/Hair Care Actives, Functional Ingredients,
+   * Fragrances) and both served industries are still named. Nothing is added.
+   */
   description:
-    "Browse Cerium Chemicals' range of cosmetic and personal care ingredients — natural extracts, actives, functional ingredients and fragrances for personal care and home care.",
+    "Browse Cerium Chemicals' range of ingredients for personal care and home care — natural extracts, actives, functional ingredients and fragrances.",
   path: "/products",
 });
 

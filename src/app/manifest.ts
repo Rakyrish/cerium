@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: siteConfig.description,
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#21683f",
+    background_color: siteConfig.brand.backgroundColor,
+    theme_color: siteConfig.brand.themeColor,
     /*
      * The Cerium "C" monogram, cropped from the supplied logo lockup.
      *

@@ -21,6 +21,53 @@ interface PageMetaOptions {
   index?: boolean;
 }
 
+/**
+ * The site-wide social share image.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS HAS TO BE STATED HERE
+ * ---------------------------------------------------------------------------
+ * `src/app/opengraph-image.tsx` generates the image, but Next only attaches it
+ * automatically in two situations, and every other route fell through the gap
+ * between them. Measured: 158 of 162 routes were sharing as a bare text card.
+ *
+ * The file convention is *segment-scoped*. Next injects it while resolving the
+ * segment the file sits in — `app/` — and only when that segment's own metadata
+ * has not already declared `openGraph.images`
+ * (`mergeStaticMetadata` in next/dist/lib/metadata/resolve-metadata.js). Child
+ * segments have no such file, so nothing re-injects it further down the tree.
+ * What a child inherits instead is the *resolved* parent object — and a child
+ * that exports its own `openGraph` REPLACES that object wholesale rather than
+ * merging into it (`case 'openGraph'` in `mergeMetadata`, an assignment).
+ *
+ * So the image survived on exactly two kinds of route:
+ *   - `/`, because `app/page.tsx` shares the root segment with the image file;
+ *   - `/search`, because it declared no `openGraph` at all and inherited the
+ *     root's resolved object intact — which is also precisely why it advertised
+ *     the site root as its own `og:url`. That bug and this one were the same
+ *     bug seen from two ends.
+ *
+ * Every other page goes through this helper, which does export `openGraph` —
+ * and so dropped the image. Naming it here restores it for all of them at once,
+ * and is the only place that can be done without repeating an image definition
+ * across 158 pages.
+ *
+ * `twitter:image` is deliberately NOT set alongside it: Next back-fills
+ * `twitter.images` from `openGraph.images` whenever the twitter object does not
+ * declare its own (`postProcessMetadata`). Stating it twice would be two things
+ * to keep in step for no gain.
+ *
+ * The dimensions duplicate the `size` export in `opengraph-image.tsx`. That
+ * file is the source of truth and is deliberately not modified; if its size
+ * ever changes, change it here too.
+ */
+const OG_IMAGE = {
+  url: absoluteUrl("/opengraph-image"),
+  width: 1200,
+  height: 630,
+  alt: `${siteConfig.name} — ${siteConfig.tagline}`,
+} as const;
+
 export function buildMetadata({
   title,
   description,
@@ -43,6 +90,7 @@ export function buildMetadata({
       title: `${title} | ${siteConfig.name}`,
       description,
       locale: siteConfig.locale,
+      images: [OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",

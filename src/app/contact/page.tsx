@@ -10,10 +10,21 @@ import { fetchProduct } from "@/lib/content";
 import { siteConfig } from "@/config/site";
 import { buildMetadata } from "@/lib/seo";
 
+/*
+ * Built from configuration rather than written out.
+ *
+ * This description previously repeated the company name, locality, phone
+ * number and email address as literal text. Four values that already live in
+ * `siteConfig`, in a string nobody would think to update when the phone number
+ * changes — a meta description advertising a disconnected number is worse than
+ * a vague one, because search results cache it.
+ */
 export const metadata: Metadata = buildMetadata({
   title: "Contact",
   description:
-    "Contact Cerium Chemicals in Industrial Area, Nairobi. Call +254 724 532 892 or email hello@ceriumchemicals.co.ke to enquire about specialty raw materials.",
+    `Contact ${siteConfig.name} in ${siteConfig.address.locality}, ` +
+    `${siteConfig.address.region}. Call ${siteConfig.contact.phoneDisplay} or ` +
+    `email ${siteConfig.contact.email} to enquire about specialty raw materials.`,
   path: "/contact",
 });
 
@@ -39,13 +50,16 @@ export default async function ContactPage({ searchParams }: PageProps) {
 
   const product = productSlug ? await fetchProduct(productSlug) : null;
 
+  // The bare host, for the subject line of an unprompted enquiry.
+  const host = new URL(siteConfig.url).host;
+
   const subject = product
     ? `Enquiry: ${product.name}`
-    : "Enquiry via ceriumchemicals.co.ke";
+    : `Enquiry via ${host}`;
 
   const body = product
-    ? `Hello Cerium Chemicals,\n\nI would like to enquire about ${product.name}.\n\nQuantity required:\nIntended application:\nCompany:\n\nThank you.`
-    : `Hello Cerium Chemicals,\n\nI would like to enquire about:\n\nQuantity required:\nIntended application:\nCompany:\n\nThank you.`;
+    ? `Hello ${siteConfig.name},\n\nI would like to enquire about ${product.name}.\n\nQuantity required:\nIntended application:\nCompany:\n\nThank you.`
+    : `Hello ${siteConfig.name},\n\nI would like to enquire about:\n\nQuantity required:\nIntended application:\nCompany:\n\nThank you.`;
 
   const mailto = `${siteConfig.contact.emailHref}?subject=${encodeURIComponent(
     subject,

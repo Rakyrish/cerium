@@ -17,7 +17,7 @@ export const contentType = "image/png";
 
 export default async function OpengraphImage() {
   const logoData = await readFile(
-    join(process.cwd(), "public/brand/cerium-logo-white.png"),
+    join(process.cwd(), "public", siteConfig.brand.logoInverse.src),
   );
   const logoSrc = `data:image/png;base64,${logoData.toString("base64")}`;
 
@@ -32,7 +32,7 @@ export default async function OpengraphImage() {
           alignItems: "center",
           justifyContent: "center",
           gap: 40,
-          backgroundColor: "#21683f",
+          backgroundColor: siteConfig.brand.themeColor,
         }}
       >
         <img src={logoSrc} width={440} height={137.5} alt="" />
@@ -40,13 +40,13 @@ export default async function OpengraphImage() {
           style={{
             display: "flex",
             fontSize: 30,
-            color: "#e8f3ec",
+            color: siteConfig.brand.onDarkColor,
             letterSpacing: 0.5,
             textAlign: "center",
             maxWidth: 860,
           }}
         >
-          Specialty raw materials for personal care and home care
+          {siteConfig.strapline}
         </div>
       </div>
     ),

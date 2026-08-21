@@ -1,4 +1,30 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { NextConfig } from "next";
+import { config as loadEnv } from "dotenv";
+
+/**
+ * Load the project's single configuration file.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS HERE AND NOT IN A .env NEXT WOULD FIND ON ITS OWN
+ * ---------------------------------------------------------------------------
+ * There is one .env for the whole project, at the repository root, shared with
+ * the Django backend. Next only looks for .env files inside this directory, so
+ * without this it would find nothing and every NEXT_PUBLIC_ value would be
+ * inlined as `undefined` — a build that succeeds and produces a broken site.
+ *
+ * `next.config.ts` is evaluated before compilation begins, which is what makes
+ * this early enough for the NEXT_PUBLIC_ replacement to see the values.
+ *
+ * `override: false` is deliberate: a variable already present in the real
+ * environment wins. That is what lets docker-compose pass build args and CI
+ * pass secrets without either being silently overwritten by a stale local file.
+ */
+const rootEnv = path.resolve(__dirname, "..", ".env");
+if (existsSync(rootEnv)) {
+  loadEnv({ path: rootEnv, override: false });
+}
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

@@ -7,7 +7,7 @@ import { Breadcrumbs } from "@/components/layout/PageHeader";
 import { CTA } from "@/components/sections/CTA";
 import { SearchResultList } from "@/components/search/SearchResultList";
 import { searchCatalogue, MIN_QUERY_LENGTH } from "@/lib/search";
-import { absoluteUrl } from "@/config/site";
+import { buildMetadata } from "@/lib/seo";
 
 /**
  * Search results page.
@@ -28,14 +28,26 @@ import { absoluteUrl } from "@/config/site";
  *
  * The canonical points at `/search` with no query, so any shared result URL
  * consolidates rather than each becoming its own entity.
+ *
+ * Built through `buildMetadata` like every other route. Hand-rolling the
+ * metadata object here meant this page declared no `openGraph` at all, so it
+ * inherited the root layout's resolved object wholesale — including `url`,
+ * which is the site root. The page therefore advertised the homepage as its own
+ * og:url while its canonical said `/search`, telling a crawler two different
+ * things about the same page. Going through the helper fixes that; `index:
+ * false` keeps the page out of the index exactly as before.
+ *
+ * Note that inheriting the root object is also what kept the OG image working
+ * here while 158 other routes lost it — see the `OG_IMAGE` comment in
+ * `lib/seo.ts`. Both symptoms had one cause, and the helper now handles both.
  */
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Search",
   description:
     "Search the Cerium Chemicals catalogue — products, ranges, applications and industries.",
-  robots: { index: false, follow: true },
-  alternates: { canonical: absoluteUrl("/search") },
-};
+  path: "/search",
+  index: false,
+});
 
 /** Depends on the query string, so it is rendered per request. */
 export const dynamic = "force-dynamic";

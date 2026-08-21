@@ -61,12 +61,22 @@ docker compose up -d --build    # full prod stack (db + web + caddy)
 npm run db:generate   # drizzle-kit: generate a migration from schema changes
 npm run db:migrate    # apply pending migrations (deliberately manual)
 npm run db:seed       # (re)seed Postgres from the reviewed typed catalogue
-npm run db:admin      # create/update an admin account (interactive, needs a TTY)
+npm run db:admin      # RETIRED — prints the Django command instead. Accounts
+                      # live in Django: manage.py create_admin
 npm run db:studio     # drizzle-kit studio, a DB browser
 ```
 
+**Production images must be built with `NEXT_PUBLIC_ALLOW_INDEXING=true`.**
+It is inlined at build time, so a production image built without it ships
+`robots.txt: Disallow: /` and no amount of runtime configuration changes that.
+Verify after every deploy with `curl -s https://<domain>/robots.txt` — expect
+`Allow: /` and the `Sitemap:` line. The default stays false so staging cannot
+be indexed by accident; do not change the default to fix a deploy.
+
 **First deploy, in order:** `docker compose up -d db` → `npm run db:migrate` →
-`npm run db:seed` → `npm run db:admin` → `docker compose up -d --build`.
+`npm run db:seed` → `docker compose run --rm backend python manage.py migrate` →
+`docker compose run --rm backend python manage.py create_admin` →
+`docker compose up -d --build`.
 Migrations never run automatically on boot: two replicas starting at once would
 race, and a mistyped env var would run them against the wrong database.
 
@@ -110,12 +120,27 @@ from `@/data/taxonomy` or `@/data/applications` into pages/components — extend
 and non-catalogue data — `company.ts`, `navigation.ts`, `media.ts` — are
 imported directly today; that is the current convention, not a bug.)
 
-**Backend decision (supersedes the Django plan).** Django + PostgreSQL as a
-separate service was the plan through Phase 2.3B. It was dropped in favour of an
-admin inside this Next.js app, backed by Postgres via Drizzle, with Cloudinary
-for media. Anything in `docs/` describing a Django API describes the superseded
-plan; the entity model in `docs/phase-2-2a-schema-specification.md` is still
-authoritative and `src/db/schema.ts` follows it.
+**Backend decision — reversed in Phase 2.4A. Django is the backend of record.**
+The history matters because the repo has said both things:
+
+1. Through Phase 2.3B the plan was Django + PostgreSQL as a separate service.
+2. That was dropped in favour of an admin inside this Next.js app (Drizzle +
+   Postgres + Cloudinary). `src/db/`, `/admin` and `src/app/admin/actions.ts`
+   are that work, and they still run.
+3. **Phase 2.4A reinstated Django.** The production content model, the
+   publishing workflow, OpenAI-assisted content and Cloudinary ingest now live
+   in `backend/` — see `backend/README.md`, which is authoritative.
+
+The entity model in `docs/phase-2-2a-schema-specification.md` remains
+authoritative and `backend/catalogue/models.py` follows it, as `src/db/schema.ts`
+did before it.
+
+**Nothing in this app changed in 2.4A, and the two databases are separate.**
+Django owns `cerium_production`; the Drizzle schema here still owns `cerium`.
+Two migration systems must never be pointed at one database — each believes it
+owns the table definitions and neither reads the other's history table. The
+frontend cutover to the Django API is Phase 2.4C; until then `src/db/` and
+`drizzle/` stay, and stay pointed at the legacy database.
 
 `lib/content.ts` is still the only seam. It now resolves Postgres first and
 falls back to the reviewed typed data when no database is reachable — which is
@@ -159,8 +184,25 @@ Edge runtime where bcrypt and `pg` cannot load, so it is a UX affordance, never
 the security boundary. A Server Action is a POST endpoint reachable without
 rendering its page; guarding the layout does not guard the action.
 
-Accounts are created only by `npm run db:admin`. There is no sign-up route, no
-password-reset endpoint and no user-management screen, on purpose.
+**Admin logins live in Django, and only in Django.** `/admin` here and
+`/django-admin/` there verify the same `auth_user` row, so one person has one
+username, one email and one password for both. `src/lib/auth.ts` posts the
+credentials to `/api/admin/auth/verify/` on the backend; it does not read a
+users table and never handles a hash.
+
+Accounts are created with `cd backend && .venv/bin/python manage.py create_admin`.
+`npm run db:admin` is retired and now prints that instruction — running it used
+to create a *second* account that the sign-in page no longer reads. There is no
+sign-up route, no password-reset endpoint and no user-management screen in
+either application, on purpose.
+
+The Drizzle `users` table still exists in the legacy database but nothing
+authenticates against it. It is dead weight to be dropped in the 2.4C cutover;
+do not wire anything back to it.
+
+Sessions are still JWT here, so deactivating someone in Django stops them
+signing in *again* but does not kill a live session until it expires (7 days
+maximum).
 
 ## Design system (Phase 1 rules)
 

@@ -24,6 +24,19 @@
   --color-green-300: #8ac2a3;
   --color-green-400: #55a17c;
   --color-green-500: #2f855a;
+  /*
+   * PAIRED WITH NEXT_PUBLIC_BRAND_THEME_COLOR IN THE ROOT .env — KEEP THEM EQUAL.
+   *
+   * This is the primary brand colour. Everything else in the project reads it
+   * from the .env; CSS cannot, so it is declared here and the same value is
+   * declared there for the three consumers that are not stylesheets: the
+   * browser theme colour, the web manifest and the generated social image.
+   *
+   * This is the single duplication the configuration cleanup could not remove.
+   * Resolving it properly means generating this file from the .env at build
+   * time, which trades one duplicated hex for a build step and a generated
+   * stylesheet — not worth it for one value. Change one, change the other.
+   */
   --color-green-600: #21683f;
   --color-green-700: #1a5333;
   --color-green-800: #164229;

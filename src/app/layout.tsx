@@ -39,7 +39,7 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: `${siteConfig.name} — Specialty raw materials for personal care and home care`,
+    default: `${siteConfig.name} — ${siteConfig.strapline}`,
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#21683f",
+  themeColor: siteConfig.brand.themeColor,
   width: "device-width",
   initialScale: 1,
   // Never block zoom — pinch-zoom is an accessibility requirement, not a

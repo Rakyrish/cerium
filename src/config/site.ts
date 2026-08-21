@@ -1,91 +1,257 @@
 /**
  * Site-wide configuration.
  *
- * Contact details, address and hours are taken from supplied Cerium material
- * (2026 catalogue back cover, Q3 2026 fragrance price list footer, and the
- * current ceriumchemicals.co.ke site). Nothing here is invented.
+ * ---------------------------------------------------------------------------
+ * EVERY VALUE HERE COMES FROM THE ROOT .env. NOTHING IS HARDCODED.
+ * ---------------------------------------------------------------------------
+ * There is one configuration file for the whole project, at the repository
+ * root, shared by this application and the Django backend. If you are about to
+ * type a domain, a phone number, an address or a colour into a source file,
+ * add it to `.env.example` and read it here instead.
  *
- * Anything environment-specific reads from process.env so no deployment detail
- * is baked into source.
+ * ---------------------------------------------------------------------------
+ * WHY EVERY KEY IS WRITTEN OUT LITERALLY
+ * ---------------------------------------------------------------------------
+ * `siteConfig` is imported by client components (`MobileNavigation`,
+ * `error.tsx`), so these values have to survive into the browser bundle. Next
+ * does that by textually replacing occurrences of `process.env.NEXT_PUBLIC_X`
+ * at build time — which only works on a LITERAL member expression.
+ *
+ * A dynamic lookup like `process.env[name]` is not replaced. It compiles fine,
+ * passes typecheck, works in every server component, and then silently
+ * evaluates to `undefined` in the browser. That failure mode is why the block
+ * below is a boring list of literal reads rather than a tidy loop, and why it
+ * must stay that way.
+ *
+ * The `NEXT_PUBLIC_` prefix also means these are inlined when the image is
+ * BUILT, not read when the container starts. Changing one requires a rebuild.
  */
 
-const rawSiteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://ceriumchemicals.co.ke";
+const env = {
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+
+  companyName: process.env.NEXT_PUBLIC_COMPANY_NAME,
+  companyTagline: process.env.NEXT_PUBLIC_COMPANY_TAGLINE,
+  companyDescription: process.env.NEXT_PUBLIC_COMPANY_DESCRIPTION,
+  companyStrapline: process.env.NEXT_PUBLIC_COMPANY_STRAPLINE,
+  companyAreaServed: process.env.NEXT_PUBLIC_COMPANY_AREA_SERVED,
+
+  contactPhone: process.env.NEXT_PUBLIC_CONTACT_PHONE,
+  contactPhoneE164: process.env.NEXT_PUBLIC_CONTACT_PHONE_E164,
+  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL,
+
+  addressStreet: process.env.NEXT_PUBLIC_ADDRESS_STREET,
+  addressLocality: process.env.NEXT_PUBLIC_ADDRESS_LOCALITY,
+  addressRegion: process.env.NEXT_PUBLIC_ADDRESS_REGION,
+  addressCountry: process.env.NEXT_PUBLIC_ADDRESS_COUNTRY,
+  addressCountryCode: process.env.NEXT_PUBLIC_ADDRESS_COUNTRY_CODE,
+
+  openingHours: process.env.NEXT_PUBLIC_OPENING_HOURS,
+
+  socialFacebook: process.env.NEXT_PUBLIC_SOCIAL_FACEBOOK,
+  socialInstagram: process.env.NEXT_PUBLIC_SOCIAL_INSTAGRAM,
+  socialLinkedin: process.env.NEXT_PUBLIC_SOCIAL_LINKEDIN,
+
+  brandThemeColor: process.env.NEXT_PUBLIC_BRAND_THEME_COLOR,
+  brandOnDarkColor: process.env.NEXT_PUBLIC_BRAND_ON_DARK_COLOR,
+  brandBackgroundColor: process.env.NEXT_PUBLIC_BRAND_BACKGROUND_COLOR,
+  brandLogo: process.env.NEXT_PUBLIC_BRAND_LOGO,
+  brandLogoInverse: process.env.NEXT_PUBLIC_BRAND_LOGO_INVERSE,
+  brandLogoWidth: process.env.NEXT_PUBLIC_BRAND_LOGO_WIDTH,
+  brandLogoHeight: process.env.NEXT_PUBLIC_BRAND_LOGO_HEIGHT,
+
+  siteLocale: process.env.NEXT_PUBLIC_SITE_LOCALE,
+  siteLanguage: process.env.NEXT_PUBLIC_SITE_LANGUAGE,
+} as const;
+
+/**
+ * Read a value that the site cannot honestly render without.
+ *
+ * Throwing is the point. The alternative — a plausible-looking default — is
+ * how a build ships with someone else's phone number or the wrong canonical
+ * domain, and neither is visible by looking at the page. A missing variable
+ * should stop the build with the name of the variable in the message.
+ */
+function required(value: string | undefined, name: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    throw new Error(
+      `${name} is not set. Every configuration value comes from the root .env — ` +
+        `copy .env.example to .env and fill it in. Note that NEXT_PUBLIC_* values ` +
+        `are inlined at build time, so this must be set when the image is BUILT.`,
+    );
+  }
+  return trimmed;
+}
+
+/** Read a value whose absence is a legitimate state, not an error. */
+function optional(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+}
+
+function requiredNumber(value: string | undefined, name: string): number {
+  const parsed = Number(required(value, name));
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${name} must be a number, got "${value}".`);
+  }
+  return parsed;
+}
+
+/**
+ * Parse the packed opening-hours string.
+ *
+ * Format: `<days>|<time>` entries separated by `;`. Packed rather than one
+ * variable per row because the number of rows is editorial — Cerium may
+ * publish two lines or four — and a fixed set of DAY_1/TIME_1 variables would
+ * cap it at whatever we guessed today.
+ *
+ * An empty value yields no rows, which publishes no hours. That is correct:
+ * inventing opening hours is exactly the class of guess this codebase refuses.
+ */
+function parseOpeningHours(
+  value: string | undefined,
+): ReadonlyArray<{ days: string; time: string }> {
+  if (!value?.trim()) return [];
+
+  return value
+    .split(";")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [days, time] = entry.split("|").map((part) => part.trim());
+      if (!days || !time) {
+        throw new Error(
+          `NEXT_PUBLIC_OPENING_HOURS entry "${entry}" is malformed. ` +
+            `Expected "<days>|<time>", entries separated by ";".`,
+        );
+      }
+      return { days, time };
+    });
+}
+
+const phoneE164 = required(
+  env.contactPhoneE164,
+  "NEXT_PUBLIC_CONTACT_PHONE_E164",
+).replace(/[^\d]/g, "");
+
+const email = required(env.contactEmail, "NEXT_PUBLIC_CONTACT_EMAIL");
+
+/** No trailing slash, so `absoluteUrl` never produces a double slash. */
+const rawSiteUrl = required(env.siteUrl, "NEXT_PUBLIC_SITE_URL").replace(
+  /\/$/,
+  "",
+);
 
 export const siteConfig = {
-  name: "Cerium Chemicals",
-  /** Tagline is part of the supplied logo lockup. */
-  tagline: "Sourcing made easy",
-  /**
-   * Legal/company descriptor, taken verbatim from the 2026 catalogue "About Us".
-   * Note: the current WordPress site also lists food ingredients. The 2026
-   * catalogue does not, so food is deliberately excluded pending confirmation.
-   */
-  description:
-    "Cerium Chemicals is a customer-oriented company focused on delivering raw material solutions to the personal care and home care industries.",
+  name: required(env.companyName, "NEXT_PUBLIC_COMPANY_NAME"),
+  tagline: required(env.companyTagline, "NEXT_PUBLIC_COMPANY_TAGLINE"),
+  description: required(
+    env.companyDescription,
+    "NEXT_PUBLIC_COMPANY_DESCRIPTION",
+  ),
+  /** The line drawn on the generated social share image. */
+  strapline: required(env.companyStrapline, "NEXT_PUBLIC_COMPANY_STRAPLINE"),
+  areaServed: required(
+    env.companyAreaServed,
+    "NEXT_PUBLIC_COMPANY_AREA_SERVED",
+  ),
+
   url: rawSiteUrl,
-  locale: "en_KE",
-  language: "en",
+  locale: required(env.siteLocale, "NEXT_PUBLIC_SITE_LOCALE"),
+  language: required(env.siteLanguage, "NEXT_PUBLIC_SITE_LANGUAGE"),
 
   contact: {
-    // Catalogue back cover + fragrance price list footer
-    phoneDisplay: "+254 724 532 892",
-    phoneHref: "tel:+254724532892",
-    email: "hello@ceriumchemicals.co.ke",
-    emailHref: "mailto:hello@ceriumchemicals.co.ke",
-    whatsappHref: "https://wa.me/254724532892",
+    phoneDisplay: required(env.contactPhone, "NEXT_PUBLIC_CONTACT_PHONE"),
+    // Derived, not configured separately. Two variables for one number is two
+    // things that can disagree, and the one people notice is the dialled one.
+    phoneHref: `tel:+${phoneE164}`,
+    email,
+    emailHref: `mailto:${email}`,
+    whatsappHref: `https://wa.me/${phoneE164}`,
   },
 
   address: {
-    // Catalogue back cover
-    street: "Bamburi Road, Building 22, Off Enterprise Road",
-    locality: "Industrial Area",
-    region: "Nairobi",
-    country: "Kenya",
-    countryCode: "KE",
+    street: required(env.addressStreet, "NEXT_PUBLIC_ADDRESS_STREET"),
+    locality: required(env.addressLocality, "NEXT_PUBLIC_ADDRESS_LOCALITY"),
+    region: required(env.addressRegion, "NEXT_PUBLIC_ADDRESS_REGION"),
+    country: required(env.addressCountry, "NEXT_PUBLIC_ADDRESS_COUNTRY"),
+    countryCode: required(
+      env.addressCountryCode,
+      "NEXT_PUBLIC_ADDRESS_COUNTRY_CODE",
+    ),
   },
 
-  /** Opening hours as published on the current ceriumchemicals.co.ke site. */
-  hours: [
-    { days: "Monday – Friday", time: "8:30 AM – 6:00 PM" },
-    { days: "Saturday", time: "8:30 AM – 2:00 PM" },
-  ],
+  hours: parseOpeningHours(env.openingHours),
 
   /**
    * Social profiles.
    *
-   * The current site links Facebook, Instagram and WhatsApp. Only WhatsApp has
-   * a URL that can be derived with certainty from the supplied phone number, so
-   * the others are left without `href` until Cerium confirms the exact handles.
-   * `SocialLinks` renders only entries that have an href.
+   * WhatsApp is derived from the phone number, so it is always present and
+   * always consistent. The rest are `undefined` until Cerium confirms the
+   * exact handles — `SocialLinks` renders only entries that have an href, and
+   * `organizationSchema` omits them from `sameAs`. A guessed profile URL in
+   * `sameAs` is a factual claim about an account that may not be Cerium's.
    */
   social: [
-    { name: "WhatsApp", href: "https://wa.me/254724532892" },
-    { name: "Facebook", href: undefined },
-    { name: "Instagram", href: undefined },
-    { name: "LinkedIn", href: undefined },
+    { name: "WhatsApp", href: `https://wa.me/${phoneE164}` },
+    { name: "Facebook", href: optional(env.socialFacebook) },
+    { name: "Instagram", href: optional(env.socialInstagram) },
+    { name: "LinkedIn", href: optional(env.socialLinkedin) },
   ] as ReadonlyArray<{ name: string; href?: string }>,
 
   brand: {
+    /**
+     * Must equal `--color-green-600` in `app/globals.css`.
+     *
+     * CSS cannot read the .env, so the design token is declared there and the
+     * value is declared here for the consumers that are not CSS: the browser
+     * theme colour, the web manifest and the generated social image. That is
+     * the one duplication this file cannot remove, and globals.css carries a
+     * matching note at the token.
+     */
+    themeColor: required(
+      env.brandThemeColor,
+      "NEXT_PUBLIC_BRAND_THEME_COLOR",
+    ),
+    /** Light tint for text on the brand-green social image. */
+    onDarkColor: required(
+      env.brandOnDarkColor,
+      "NEXT_PUBLIC_BRAND_ON_DARK_COLOR",
+    ),
+    /** Splash/background colour for the installed web app. */
+    backgroundColor: required(
+      env.brandBackgroundColor,
+      "NEXT_PUBLIC_BRAND_BACKGROUND_COLOR",
+    ),
     logo: {
-      src: "/brand/cerium-logo.png",
-      alt: "Cerium Chemicals",
-      width: 800,
-      height: 250,
+      src: required(env.brandLogo, "NEXT_PUBLIC_BRAND_LOGO"),
+      alt: required(env.companyName, "NEXT_PUBLIC_COMPANY_NAME"),
+      width: requiredNumber(env.brandLogoWidth, "NEXT_PUBLIC_BRAND_LOGO_WIDTH"),
+      height: requiredNumber(
+        env.brandLogoHeight,
+        "NEXT_PUBLIC_BRAND_LOGO_HEIGHT",
+      ),
     },
     /** Monochrome reversal of the supplied logo, for dark surfaces. */
     logoInverse: {
-      src: "/brand/cerium-logo-white.png",
-      alt: "Cerium Chemicals",
-      width: 800,
-      height: 250,
+      src: required(env.brandLogoInverse, "NEXT_PUBLIC_BRAND_LOGO_INVERSE"),
+      alt: required(env.companyName, "NEXT_PUBLIC_COMPANY_NAME"),
+      width: requiredNumber(env.brandLogoWidth, "NEXT_PUBLIC_BRAND_LOGO_WIDTH"),
+      height: requiredNumber(
+        env.brandLogoHeight,
+        "NEXT_PUBLIC_BRAND_LOGO_HEIGHT",
+      ),
     },
   },
 } as const;
 
 /**
- * Cloudinary. Unset in Phase 1 — `CeriumImage` falls back to a labelled
- * development placeholder whenever no real asset is available.
+ * Cloudinary delivery.
+ *
+ * The cloud name is public — it appears in every image URL — so it carries the
+ * NEXT_PUBLIC_ prefix. Unset is a supported state: `CeriumImage` falls back to
+ * a visibly labelled development placeholder rather than a broken image.
  */
 export const cloudinaryConfig = {
   cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "",
@@ -97,21 +263,19 @@ export const cloudinaryConfig = {
 /**
  * Cloudinary server credentials — signing uploads from the admin.
  *
- * SERVER ONLY. These have no `NEXT_PUBLIC_` prefix, so Next will not inline
- * them into the client bundle; referencing this object from a client component
- * yields empty strings rather than leaking the secret. Uploads are signed on
- * the server and the browser never sees the API secret.
+ * SERVER ONLY, and read at runtime rather than inlined. No `NEXT_PUBLIC_`
+ * prefix means Next will not put these in the client bundle; referencing this
+ * object from a client component yields empty strings rather than leaking the
+ * secret.
  *
  * Kept separate from `cloudinaryConfig` above precisely so the public delivery
- * name and the secret key cannot be confused for one another at a call site.
+ * name and the secret key cannot be confused at a call site.
  */
 export const cloudinaryServerConfig = {
-  cloudName:
-    process.env.CLOUDINARY_CLOUD_NAME ??
-    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ??
-    "",
+  cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "",
   apiKey: process.env.CLOUDINARY_API_KEY ?? "",
   apiSecret: process.env.CLOUDINARY_API_SECRET ?? "",
+  folder: process.env.CLOUDINARY_FOLDER ?? "cerium",
   get isConfigured() {
     return (
       this.cloudName.length > 0 &&
@@ -122,16 +286,35 @@ export const cloudinaryServerConfig = {
 } as const;
 
 /**
- * Retained only so an existing `.env` does not break.
+ * The Django API.
  *
- * This pointed at a planned separate Django service. The admin is now part of
- * this Next.js application and reads Postgres directly, so nothing consumes
- * this value. See `CLAUDE.md` for the decision that changed it.
+ * Server-side only and read at runtime, so it points at the compose service
+ * name rather than the public domain — the request never leaves the container
+ * network. Consumed from Phase 2.4C, when `lib/content.ts` moves off Drizzle.
  */
 export const apiConfig = {
-  baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "",
+  baseUrl: (process.env.DJANGO_API_URL ?? "").replace(/\/$/, ""),
   get isConfigured() {
     return this.baseUrl.length > 0;
+  },
+} as const;
+
+/**
+ * The shared secret that proves a credential-verification request came from
+ * this server.
+ *
+ * Server-side only and read at runtime — no `NEXT_PUBLIC_` prefix, so Next
+ * cannot inline it into the browser bundle. It authenticates the *caller* of
+ * `/api/admin/auth/verify/`, which is a password oracle and must not be
+ * callable by anything else.
+ *
+ * Unset means sign-in refuses rather than proceeding unauthenticated. There is
+ * no default: an empty expected token must never be read as "accept anything".
+ */
+export const adminAuthConfig = {
+  serviceToken: process.env.ADMIN_AUTH_SERVICE_TOKEN ?? "",
+  get isConfigured() {
+    return this.serviceToken.length > 0;
   },
 } as const;
 
