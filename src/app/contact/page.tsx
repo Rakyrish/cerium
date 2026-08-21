@@ -5,6 +5,7 @@ import { Heading } from "@/components/ui/Heading";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/motion/Reveal";
+import { BrowseCatalogue } from "@/components/sections/BrowseCatalogue";
 import { fetchProduct } from "@/lib/content";
 import { siteConfig } from "@/config/site";
 import { buildMetadata } from "@/lib/seo";
@@ -207,6 +208,13 @@ export default async function ContactPage({ searchParams }: PageProps) {
           </div>
         </Container>
       </Section>
+
+      {/* Same link-sink fix as /about: this page received heavy navigation
+          linking and returned a single body link. */}
+      <BrowseCatalogue
+        title="While you are here"
+        intro="If you are not sure what to ask for yet, these are the three ways into the catalogue."
+      />
     </>
   );
 }

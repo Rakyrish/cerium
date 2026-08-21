@@ -95,8 +95,38 @@ export const cloudinaryConfig = {
 } as const;
 
 /**
- * Future Django REST API. Unset in Phase 1; `src/lib/api` reads local typed
- * data until this is provided.
+ * Cloudinary server credentials — signing uploads from the admin.
+ *
+ * SERVER ONLY. These have no `NEXT_PUBLIC_` prefix, so Next will not inline
+ * them into the client bundle; referencing this object from a client component
+ * yields empty strings rather than leaking the secret. Uploads are signed on
+ * the server and the browser never sees the API secret.
+ *
+ * Kept separate from `cloudinaryConfig` above precisely so the public delivery
+ * name and the secret key cannot be confused for one another at a call site.
+ */
+export const cloudinaryServerConfig = {
+  cloudName:
+    process.env.CLOUDINARY_CLOUD_NAME ??
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ??
+    "",
+  apiKey: process.env.CLOUDINARY_API_KEY ?? "",
+  apiSecret: process.env.CLOUDINARY_API_SECRET ?? "",
+  get isConfigured() {
+    return (
+      this.cloudName.length > 0 &&
+      this.apiKey.length > 0 &&
+      this.apiSecret.length > 0
+    );
+  },
+} as const;
+
+/**
+ * Retained only so an existing `.env` does not break.
+ *
+ * This pointed at a planned separate Django service. The admin is now part of
+ * this Next.js application and reads Postgres directly, so nothing consumes
+ * this value. See `CLAUDE.md` for the decision that changed it.
  */
 export const apiConfig = {
   baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "",

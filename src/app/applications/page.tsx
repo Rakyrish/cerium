@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { ApplicationCard } from "@/components/cards/ApplicationCard";
 import { Badge } from "@/components/ui/Badge";
 import { CTA } from "@/components/sections/CTA";
+import { BrowseCatalogue } from "@/components/sections/BrowseCatalogue";
 import { Reveal } from "@/components/motion/Reveal";
 import { fetchApplicationFormats, fetchApplications } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
@@ -34,12 +35,26 @@ export default async function ApplicationsPage() {
         ]}
       />
 
-      <Section space="lg">
+      <Section space="lg" ariaLabelledBy="application-areas-heading">
         <Container>
+          {/*
+            The cards are `h3`, which is right where a visible `h2` introduces
+            them — the homepage section and the industry detail page both do.
+            On this page the h1 was followed straight by h3, skipping a level
+            and breaking the outline for anyone navigating by heading.
+
+            The heading is visually hidden rather than shown because the h1
+            directly above already says "Applications"; a second visible one
+            would be redundant to a sighted reader while the outline still needs
+            the level to exist. It also gives this section landmark its name.
+          */}
+          <h2 id="application-areas-heading" className="sr-only">
+            Application areas
+          </h2>
           <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {applications.map((application, index) => (
               <li key={application.slug}>
-                <Reveal delay={(index % 3) * 60}>
+                <Reveal delay={(index % 3) * 60} className="h-full">
                   <ApplicationCard application={application} />
                 </Reveal>
               </li>
@@ -62,6 +77,12 @@ export default async function ApplicationsPage() {
           </Reveal>
         </Container>
       </Section>
+
+      <BrowseCatalogue
+        exclude="/applications"
+        title="Other ways to explore"
+        intro="This page lists the catalogue by end use. You can also start from the material itself, or from the market you supply."
+      />
 
       <CTA />
     </>

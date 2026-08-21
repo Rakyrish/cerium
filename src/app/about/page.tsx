@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { CeriumImage } from "@/components/ui/CeriumImage";
 import { Values, Partners } from "@/components/sections/Values";
 import { CTA } from "@/components/sections/CTA";
+import { BrowseCatalogue } from "@/components/sections/BrowseCatalogue";
 import { Reveal } from "@/components/motion/Reveal";
 import {
   aboutSummary,
@@ -110,6 +111,10 @@ export default function AboutPage() {
       <div id="partners">
         <Partners />
       </div>
+
+      {/* This page was a link sink — heavy inbound from the global navigation,
+          almost no way onward into the catalogue. See BrowseCatalogue. */}
+      <BrowseCatalogue intro="Cerium supplies raw materials to formulators. There are three ways into the catalogue, depending on where you are starting from." />
 
       <CTA />
     </>

@@ -30,6 +30,7 @@
  */
 
 import type { ImageRef } from "@/types/content";
+import { siteImage } from "@/data/media-assignments";
 
 /** An image slot that may not be filled yet. */
 interface MediaSlot {
@@ -39,6 +40,12 @@ interface MediaSlot {
   placeholder: string;
 }
 
+/*
+ * Slots resolve through `siteImage`, so the Content Studio can fill one without
+ * anybody editing this file by hand. Setting `image` literally below still
+ * works and still wins — see `applyMediaAssignments` — so a deliberately
+ * committed asset is never overridden by a Studio assignment.
+ */
 export const siteMedia = {
   /**
    * Homepage hero background.
@@ -49,19 +56,19 @@ export const siteMedia = {
    * Recommended: 2400×1350 or larger, landscape.
    */
   hero: {
-    image: undefined,
+    image: siteImage("hero"),
     placeholder: "Wide hero image — ingredients, laboratory or warehouse",
   } satisfies MediaSlot,
 
   /** Homepage "Who we are" portrait, beside the vision and mission. */
   companyIntro: {
-    image: undefined,
+    image: siteImage("companyIntro"),
     placeholder: "Cerium team or Nairobi warehouse operations",
   } satisfies MediaSlot,
 
   /** About page portrait, beside vision, mission and the company metrics. */
   aboutPortrait: {
-    image: undefined,
+    image: siteImage("aboutPortrait"),
     placeholder: "Cerium warehouse, Industrial Area, Nairobi",
   } satisfies MediaSlot,
 } as const;

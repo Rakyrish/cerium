@@ -8,6 +8,7 @@ const tabs = [
   { href: "/studio", label: "Catalogue" },
   { href: "/studio/products", label: "Add product" },
   { href: "/studio/images", label: "Images" },
+  { href: "/studio/media", label: "Media" },
 ];
 
 /** Studio navigation. Real links, so each tab is bookmarkable and reloadable. */

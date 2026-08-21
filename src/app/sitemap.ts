@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
 import { absoluteUrl } from "@/config/site";
 import {
+  fetchAllProductParams,
   fetchApplications,
   fetchCategories,
   fetchIndustries,
 } from "@/lib/content";
-import { flattenCategories, isPublishable } from "@/data/taxonomy";
+import { flattenCategories, isIndexable } from "@/data/taxonomy";
 
 /**
  * Sitemap.
@@ -34,11 +35,13 @@ import { flattenCategories, isPublishable } from "@/data/taxonomy";
  * reinstates this from a real `updated_at` on the database record.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [topCategories, applications, industries] = await Promise.all([
-    fetchCategories(),
-    fetchApplications(),
-    fetchIndustries(),
-  ]);
+  const [topCategories, applications, industries, productParams] =
+    await Promise.all([
+      fetchCategories(),
+      fetchApplications(),
+      fetchIndustries(),
+      fetchAllProductParams(),
+    ]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: absoluteUrl("/"), changeFrequency: "monthly", priority: 1 },
@@ -49,16 +52,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl("/contact"), changeFrequency: "yearly", priority: 0.6 },
   ];
 
-  // Every category that actually has a page — these earn the long-tail search
-  // traffic. Filtered by `isPublishable` so the sitemap can never advertise a
-  // URL that does not exist.
+  // Categories that earn the long-tail search traffic.
+  //
+  // Filtered by `isIndexable` rather than `isPublishable`: a range with no
+  // products anywhere beneath it has a page, but nothing on it to rank, and a
+  // sitemap that advertises thin pages invites them to be judged as a set. The
+  // page still exists and is still linked — it is just not submitted. See
+  // `isIndexable` in taxonomy.ts for why that distinction is drawn there.
   const categoryRoutes: MetadataRoute.Sitemap = flattenCategories(topCategories)
-    .filter(isPublishable)
+    .filter(isIndexable)
     .map((category) => ({
       url: absoluteUrl(`/products/${category.slug}`),
       changeFrequency: "monthly",
       priority: 0.8,
     }));
+
+  // Product detail pages, from the same pairs that generate the routes and the
+  // internal links — so the sitemap lists the canonical URL for each product
+  // and cannot advertise one of the non-canonical ancestor paths, which the
+  // route itself 404s.
+  const productRoutes: MetadataRoute.Sitemap = productParams.map((params) => ({
+    url: absoluteUrl(`/products/${params.category}/${params.product}`),
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
 
   const applicationRoutes: MetadataRoute.Sitemap = applications.map((application) => ({
     url: absoluteUrl(`/applications/${application.slug}`),
@@ -75,6 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticRoutes,
     ...categoryRoutes,
+    ...productRoutes,
     ...applicationRoutes,
     ...industryRoutes,
   ];

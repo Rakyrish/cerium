@@ -289,11 +289,12 @@ export function Header({
         onClose={() => setMobileOpen(false)}
         navigation={navigation}
       />
-      <SearchOverlay
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        browse={browse}
-      />
+      {/* Mounted only while open, so closing discards the query and results
+          instead of the overlay having to reset itself — and reopening always
+          starts clean. */}
+      {searchOpen && (
+        <SearchOverlay onClose={() => setSearchOpen(false)} browse={browse} />
+      )}
     </>
   );
 }

@@ -55,17 +55,37 @@ export function Hero({
         </>
       )}
 
-      {/* Ambient depth. Pure CSS — no image request, no layout cost. */}
+      {/*
+        Ambient depth. Pure CSS — no image request, no layout cost.
+
+        The two gradients are separate elements rather than one two-stop
+        background so each can drift on its own timing; overlapped and moving at
+        different rates they read as a slow shift in the light rather than as a
+        panning texture. `-inset-[25%]` oversizes both well past the section so
+        a drifting layer can never bring its own soft edge into frame — the
+        section already clips with `overflow-hidden`.
+
+        This is the layer that carries the motion today, because no photography
+        has been supplied. When it is, the branch above takes over and this one
+        stops rendering.
+      */}
       {!hasImage && (
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 opacity-70"
-          style={{
-            backgroundImage:
-              "radial-gradient(ellipse 70% 60% at 78% 8%, rgba(53,160,95,0.28), transparent 62%), " +
-              "radial-gradient(ellipse 55% 50% at 8% 92%, rgba(29,63,209,0.16), transparent 60%)",
-          }}
-        />
+        <div aria-hidden="true" className="absolute inset-0 opacity-70">
+          <div
+            className="animate-aurora-a absolute -inset-[25%]"
+            style={{
+              backgroundImage:
+                "radial-gradient(ellipse 45% 40% at 72% 18%, rgba(53,160,95,0.30), transparent 62%)",
+            }}
+          />
+          <div
+            className="animate-aurora-b absolute -inset-[25%]"
+            style={{
+              backgroundImage:
+                "radial-gradient(ellipse 38% 34% at 22% 78%, rgba(29,63,209,0.18), transparent 60%)",
+            }}
+          />
+        </div>
       )}
 
       <Container className="relative">

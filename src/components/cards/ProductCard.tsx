@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ProductSummary } from "@/types/content";
 import { CeriumImage } from "@/components/ui/CeriumImage";
 import { Badge } from "@/components/ui/Badge";
+import { enquiryPath, productPath } from "@/lib/routes";
 import { cn } from "@/lib/cn";
 
 interface ProductCardProps {
@@ -10,6 +11,8 @@ interface ProductCardProps {
   showCategory?: boolean;
   showImage?: boolean;
   sizes?: string;
+  /** Clamp long benefit copy so a grid row keeps even card heights. */
+  clampBenefit?: boolean;
   className?: string;
 }
 
@@ -20,22 +23,38 @@ interface ProductCardProps {
  * only the fields that are present and omits the rest, so adding specifications
  * or documents in a later phase is additive rather than a rewrite.
  *
- * There is no product detail route in Phase 1, so the card does not pretend to
- * link to one. The name is text; the actionable element is an enquiry link that
- * carries the product through as a query parameter.
+ * ---------------------------------------------------------------------------
+ * WHY THE WHOLE CARD IS NOT ONE LINK
+ * ---------------------------------------------------------------------------
+ * The card has two destinations — the product page and an enquiry — so the
+ * obvious "wrap everything in an <a>" shortcut is wrong twice over: it cannot
+ * hold a second link, and it gives the one link an accessible name assembled
+ * from every scrap of text in the card, which is what a screen-reader user then
+ * has to sit through for all 122 of them.
+ *
+ * Instead the product name is the link and it stretches its own hit area over
+ * the card with an ::after overlay, so a pointer still gets the large target.
+ * The enquiry link is lifted above that overlay with `relative z-10` so it
+ * stays independently clickable. Two links, two honest accessible names, one
+ * comfortable tap target — and the focus ring lands on the name text, which is
+ * the thing that was actually focused.
  */
 export function ProductCard({
   product,
   showCategory = true,
   showImage = false,
   sizes = "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw",
+  clampBenefit = false,
   className,
 }: ProductCardProps) {
+  const href = productPath(product);
+
   return (
     <article
       className={cn(
-        "group flex h-full flex-col border border-border bg-surface p-5",
-        "transition-colors duration-[var(--duration-base)] hover:border-green-300",
+        "group relative flex h-full flex-col border border-border bg-surface p-5",
+        "transition-[border-color,transform] duration-[var(--duration-base)] ease-[var(--ease-out-soft)]",
+        "hover:border-green-300 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
         className,
       )}
     >
@@ -57,16 +76,42 @@ export function ProductCard({
         </p>
       )}
 
-      <h3 className="text-h4 font-semibold text-text">{product.name}</h3>
+      <h3 className="text-h4 font-semibold text-text">
+        {href ? (
+          <Link
+            href={href}
+            className={cn(
+              "transition-colors duration-[var(--duration-fast)] group-hover:text-primary",
+              // Stretches the hit area over the card without swallowing the
+              // enquiry link below, which sits above this overlay.
+              "after:absolute after:inset-0 after:content-['']",
+            )}
+          >
+            {product.name}
+          </Link>
+        ) : (
+          /* No category context means no canonical URL can be built, so the
+             name stays text rather than linking into a 404. */
+          product.name
+        )}
+      </h3>
 
       {product.olfactive && (
         <p className="mt-1.5 text-caption uppercase tracking-wide text-text-muted">
+          <span className="sr-only">Olfactive family: </span>
           {product.olfactive}
         </p>
       )}
 
       {product.benefit && (
-        <p className="mt-3 text-small text-text-muted">{product.benefit}</p>
+        <p
+          className={cn(
+            "mt-3 text-small text-text-muted",
+            clampBenefit && "line-clamp-3",
+          )}
+        >
+          {product.benefit}
+        </p>
       )}
 
       {product.formats && product.formats.length > 0 && (
@@ -87,26 +132,44 @@ export function ProductCard({
         </div>
       )}
 
-      <div className="mt-auto pt-5">
+      <div className="mt-auto flex items-center justify-between gap-4 pt-5">
+        {/*
+          `relative z-10` lifts the enquiry link above the name link's stretched
+          overlay, so the card carries two independently operable destinations
+          rather than one that swallows the other.
+
+          The name link is not repeated here as a "View details" row. It would
+          be a second link to the same URL, which buys a sighted user nothing
+          the whole-card hit area does not already give them and costs a
+          screen-reader user a duplicate entry in the links list — 122 times
+          over. The arrow carries the same affordance decoratively.
+        */}
         <Link
-          href={`/contact?product=${encodeURIComponent(product.slug)}`}
-          className="inline-flex items-center gap-1.5 text-small font-medium text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary"
+          href={enquiryPath(product)}
+          className="relative z-10 text-small font-medium text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary"
         >
           Enquire
-          <span className="sr-only">about {product.name}</span>
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 16 16"
-            className="h-3 w-3 transition-transform duration-[var(--duration-fast)] group-hover:translate-x-0.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2.5 8h11M9 3.5 13.5 8 9 12.5" />
-          </svg>
+          <span className="sr-only"> about {product.name}</span>
         </Link>
+
+        {href && (
+          <span
+            aria-hidden="true"
+            className="text-primary transition-transform duration-[var(--duration-fast)] ease-[var(--ease-out-soft)] group-hover:translate-x-1 motion-reduce:transform-none"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2.5 8h11M9 3.5 13.5 8 9 12.5" />
+            </svg>
+          </span>
+        )}
       </div>
     </article>
   );

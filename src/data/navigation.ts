@@ -59,6 +59,15 @@ function applicationColumns(
 ): NavColumn[] {
   return industries.map((industry) => ({
     title: industry.name,
+    /*
+     * The heading was already the industry's name; this makes it its link.
+     *
+     * Nothing about the grouping changes — the column still lists the
+     * applications whose `groupSlug` matches, which is the relationship
+     * Cerium's material declares. The industry page is simply now reachable
+     * from the navigation that was already naming it.
+     */
+    titleHref: `/industries/${industry.slug}`,
     links: applications
       .filter((application) => application.groupSlug === industry.slug)
       .map((application) => ({
@@ -153,6 +162,7 @@ export function buildPrimaryNavigation(
 export function buildFooterNavigation(
   categories: Category[],
   applications: Application[],
+  industries: Industry[],
 ): NavColumn[] {
   return [
     {
@@ -188,7 +198,37 @@ export function buildFooterNavigation(
     {
       title: "Resources",
       links: [
+        /*
+         * The two industries are listed individually, not just their index.
+         *
+         * The mega-menu names each industry as a column heading and now links
+         * it — but that panel is UNMOUNTED while closed, so none of it exists
+         * in the served HTML and no crawler ever sees it. The reason
+         * application pages already had ~160 inbound chrome links is this
+         * footer, which lists all six of them; industries had none because
+         * only their index was here.
+         *
+         * Listing them makes the footer the crawlable route it already was for
+         * applications. No relationship is created: both pages exist, and
+         * /industries already links to them.
+         */
         { label: "Industries", href: "/industries" },
+        ...industries.map((industry) => ({
+          label: industry.name,
+          href: `/industries/${industry.slug}`,
+        })),
+        /*
+         * The only real <a> pointing at /search anywhere on the site.
+         *
+         * The header trigger is a <button> that opens the overlay, so before
+         * this link existed a visitor without JavaScript had no route to the
+         * search page at all — the GET form degrades correctly, but nothing
+         * could reach the form. This is the progressive-enhancement floor:
+         * pointer users still get the overlay, everyone else gets a page.
+         *
+         * /search stays noindex; this makes it reachable, not indexable.
+         */
+        { label: "Search the catalogue", href: "/search" },
         { label: "Make an enquiry", href: "/contact" },
         // Planned destinations. Rendered as non-interactive until they exist.
         { label: "Product catalogue", href: "/resources", upcoming: true },
