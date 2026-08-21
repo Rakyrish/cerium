@@ -1,0 +1,13 @@
+# Pinned to major/minor. A backend that silently changes Django version between
+# a staging build and a production build is not reproducible.
+Django>=5.1,<5.3
+psycopg[binary]>=3.2,<4
+django-environ>=0.11,<0.13
+gunicorn>=23,<24
+whitenoise>=6.7,<7
+
+# Optional integrations. Both fail with a clear message when their key is
+# absent rather than degrading into something worse — see the services package.
+openai>=1.50,<3
+cloudinary>=1.40,<2
+requests>=2.32,<3

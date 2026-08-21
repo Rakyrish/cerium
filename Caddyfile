@@ -1,0 +1,29 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$CERIUM_DOMAIN} {
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+	# Django's editorial admin and its own CSS/JS.
+	#
+	# ONLY these two paths reach the backend. /api/admin/auth/verify/ is a
+	# password oracle and is deliberately absent — it is reachable on the
+	# container network alone, which is one of the four protections that make
+	# it safe to expose at all. Do not add a broader matcher here.
+	handle /django-admin/* {
+		reverse_proxy backend:8000
+	}
+	handle /django-static/* {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else is the Next.js site.
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+www.{$CERIUM_DOMAIN} {
+	redir https://{$CERIUM_DOMAIN}{uri} permanent
+}

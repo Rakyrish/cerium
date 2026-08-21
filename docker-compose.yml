@@ -1,0 +1,203 @@
+# =============================================================================
+# CERIUM CHEMICALS — production stack
+# =============================================================================
+#
+# Rebuilt after the Phase 2.4A pull deleted the previous file. That commit
+# migrated src/config/site.ts onto ~30 NEXT_PUBLIC_* variables and updated the
+# Dockerfile to declare them, but removed the compose file that feeds them. The
+# old one supplied 3 of the 29, so any build died in site.ts's `required()`.
+#
+# THE BUILD ARGS BELOW ARE NOT OPTIONAL DECORATION.
+# NEXT_PUBLIC_* is inlined when the image is BUILT. A value missing here is not
+# a runtime warning — it is a failed build naming the variable, by design.
+# Adding a NEXT_PUBLIC_* read to site.ts means adding an ARG to the Dockerfile
+# AND a line here, or the site cannot build.
+#
+# There is deliberately NO `backend` service yet: backend/ is not in this
+# repository. /admin sign-in verifies credentials against Django, so it cannot
+# work until that service exists. The public site is unaffected — lib/content.ts
+# falls back to the reviewed typed catalogue in src/data/.
+# =============================================================================
+
+name: cerium
+
+services:
+  # ---------------------------------------------------------------------------
+  # Postgres — catalogue records and Cloudinary image metadata.
+  # ---------------------------------------------------------------------------
+  # Image BINARIES live in Cloudinary; this stores the cloudinary_id plus
+  # format/width/height/bytes (see media_assets). Neither half is the whole
+  # picture: Cloudinary without the table has no catalogue relationships, the
+  # table without Cloudinary has no pixels.
+  db:
+    image: postgres:16-alpine
+    container_name: cerium-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DJANGO_DB: ${POSTGRES_DJANGO_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Creates Django's SEPARATE database on first boot. Runs only on an empty
+      # data directory; on an existing volume, create it by hand.
+      - ./backend/initdb:/docker-entrypoint-initdb.d:ro
+    # Loopback only. Bound so `npm run db:migrate` / `db:seed` can reach it from
+    # the host; never published to the internet.
+    ports:
+      - "127.0.0.1:5432:5432"
+    # web waits on this rather than on the container merely existing — Postgres
+    # accepts TCP well before it accepts queries.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - web
+
+  # ---------------------------------------------------------------------------
+  # Next.js — public site and /admin.
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_ALLOW_INDEXING: ${NEXT_PUBLIC_ALLOW_INDEXING}
+        NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}
+        NEXT_PUBLIC_COMPANY_NAME: ${NEXT_PUBLIC_COMPANY_NAME}
+        NEXT_PUBLIC_COMPANY_TAGLINE: ${NEXT_PUBLIC_COMPANY_TAGLINE}
+        NEXT_PUBLIC_COMPANY_DESCRIPTION: ${NEXT_PUBLIC_COMPANY_DESCRIPTION}
+        NEXT_PUBLIC_COMPANY_STRAPLINE: ${NEXT_PUBLIC_COMPANY_STRAPLINE}
+        NEXT_PUBLIC_COMPANY_AREA_SERVED: ${NEXT_PUBLIC_COMPANY_AREA_SERVED}
+        NEXT_PUBLIC_CONTACT_PHONE: ${NEXT_PUBLIC_CONTACT_PHONE}
+        NEXT_PUBLIC_CONTACT_PHONE_E164: ${NEXT_PUBLIC_CONTACT_PHONE_E164}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL}
+        NEXT_PUBLIC_ADDRESS_STREET: ${NEXT_PUBLIC_ADDRESS_STREET}
+        NEXT_PUBLIC_ADDRESS_LOCALITY: ${NEXT_PUBLIC_ADDRESS_LOCALITY}
+        NEXT_PUBLIC_ADDRESS_REGION: ${NEXT_PUBLIC_ADDRESS_REGION}
+        NEXT_PUBLIC_ADDRESS_COUNTRY: ${NEXT_PUBLIC_ADDRESS_COUNTRY}
+        NEXT_PUBLIC_ADDRESS_COUNTRY_CODE: ${NEXT_PUBLIC_ADDRESS_COUNTRY_CODE}
+        NEXT_PUBLIC_OPENING_HOURS: ${NEXT_PUBLIC_OPENING_HOURS}
+        NEXT_PUBLIC_SOCIAL_FACEBOOK: ${NEXT_PUBLIC_SOCIAL_FACEBOOK}
+        NEXT_PUBLIC_SOCIAL_INSTAGRAM: ${NEXT_PUBLIC_SOCIAL_INSTAGRAM}
+        NEXT_PUBLIC_SOCIAL_LINKEDIN: ${NEXT_PUBLIC_SOCIAL_LINKEDIN}
+        NEXT_PUBLIC_BRAND_THEME_COLOR: ${NEXT_PUBLIC_BRAND_THEME_COLOR}
+        NEXT_PUBLIC_BRAND_ON_DARK_COLOR: ${NEXT_PUBLIC_BRAND_ON_DARK_COLOR}
+        NEXT_PUBLIC_BRAND_BACKGROUND_COLOR: ${NEXT_PUBLIC_BRAND_BACKGROUND_COLOR}
+        NEXT_PUBLIC_BRAND_LOGO: ${NEXT_PUBLIC_BRAND_LOGO}
+        NEXT_PUBLIC_BRAND_LOGO_INVERSE: ${NEXT_PUBLIC_BRAND_LOGO_INVERSE}
+        NEXT_PUBLIC_BRAND_LOGO_WIDTH: ${NEXT_PUBLIC_BRAND_LOGO_WIDTH}
+        NEXT_PUBLIC_BRAND_LOGO_HEIGHT: ${NEXT_PUBLIC_BRAND_LOGO_HEIGHT}
+        NEXT_PUBLIC_SITE_LOCALE: ${NEXT_PUBLIC_SITE_LOCALE}
+        NEXT_PUBLIC_SITE_LANGUAGE: ${NEXT_PUBLIC_SITE_LANGUAGE}
+    image: cerium-web:latest
+    container_name: cerium-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    # Everything below is read at RUNTIME, so it is changed with a restart
+    # rather than a rebuild. Secrets are passed here and never as build args —
+    # a build arg stays readable in the image history forever.
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      AUTH_SECRET: ${AUTH_SECRET}
+      ADMIN_AUTH_SERVICE_TOKEN: ${ADMIN_AUTH_SERVICE_TOKEN}
+      DJANGO_API_URL: ${DJANGO_API_URL}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_FOLDER: ${CLOUDINARY_FOLDER}
+    expose:
+      - "3000"
+    networks:
+      - web
+
+  # ---------------------------------------------------------------------------
+  # Django — identity, editorial admin, AI copy, Cloudinary ingest.
+  # ---------------------------------------------------------------------------
+  # Owns cerium_production. Never reachable from the internet: Caddy publishes
+  # /django-admin/ and /django-static/ and nothing else, so /api/admin/auth/
+  # verify/ — a password oracle — stays on the container network.
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: cerium-backend:latest
+    container_name: cerium-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      DJANGO_LANGUAGE_CODE: ${DJANGO_LANGUAGE_CODE}
+      DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE}
+      CERIUM_DOMAIN: ${CERIUM_DOMAIN}
+      # Assembled here for the same reason web's DATABASE_URL is: one place
+      # that knows how the parts fit together.
+      DJANGO_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DJANGO_DB}
+      # Must match the value web sends, or every sign-in returns 403.
+      ADMIN_AUTH_SERVICE_TOKEN: ${ADMIN_AUTH_SERVICE_TOKEN}
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_FOLDER: ${CLOUDINARY_FOLDER}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+    expose:
+      - "8000"
+    healthcheck:
+      # Deliberately does not touch Postgres — this answers "is Django
+      # serving?", and conflating the two makes the dependency graph circular.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - web
+
+  # ---------------------------------------------------------------------------
+  # Caddy — TLS termination, www -> apex, reverse proxy.
+  # ---------------------------------------------------------------------------
+  # The only service that publishes a port. Reads CERIUM_DOMAIN, renamed from
+  # DOMAIN in 2.4A; the Caddyfile was updated to match.
+  caddy:
+    image: caddy:2-alpine
+    container_name: cerium-caddy
+    restart: unless-stopped
+    depends_on:
+      - web
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CERIUM_DOMAIN: ${CERIUM_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+
+networks:
+  web:
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

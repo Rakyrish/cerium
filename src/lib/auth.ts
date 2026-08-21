@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
-import { adminAuthConfig, apiConfig } from "@/config/site";
+import { adminAuthConfig, apiConfig, siteConfig } from "@/config/site";
 
 /**
  * Admin authentication.
@@ -137,10 +137,44 @@ async function verifyWithBackend(
   }
 }
 
+/**
+ * Pin the origin Auth.js builds its redirects from.
+ *
+ * Next 16's standalone server derives a route handler's absolute request URL
+ * from the HOSTNAME and PORT it binds to — 0.0.0.0:3000 in the container — and
+ * does NOT take it from the Host or X-Forwarded-Host header, though it does
+ * honour X-Forwarded-Proto. Auth.js then redirects to
+ * `https://0.0.0.0:3000/admin/sign-in`, which no browser can reach.
+ *
+ * `AUTH_URL` is the only lever: next-auth's `reqWithEnvURL()` rewrites the
+ * request's origin from it before the handler sees the request, and there is
+ * no equivalent option on the config object. It is derived from the site URL
+ * rather than added as a separate variable because they can never legitimately
+ * differ, and two variables holding one origin is one of them going stale.
+ * `??=` so an explicit AUTH_URL still wins.
+ */
+process.env.AUTH_URL ??= siteConfig.url;
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // Fail closed if AUTH_SECRET is missing rather than falling back to an
   // insecure default: an unsigned session cookie is worse than no login page.
   secret: process.env.AUTH_SECRET,
+
+  // Caddy is the only way in. It terminates TLS and reverse-proxies to this
+  // container, which is `expose`d and never published, so the Host reaching
+  // Next.js is always one Caddy matched against its own site addresses — an
+  // arbitrary Host cannot be injected from outside.
+  //
+  // next-auth defaults trustHost to true in development and FALSE in
+  // production. Left unset, every /api/auth/* call in the container is
+  // rejected as UntrustedHost, and the error redirect is then built from the
+  // standalone server's HOSTNAME=0.0.0.0 and PORT=3000 — sending the browser
+  // to https://0.0.0.0:3000/admin/sign-in?error=Configuration. It is set here
+  // rather than via AUTH_TRUST_HOST because being behind a proxy is a
+  // permanent property of this application in production, not of one
+  // deployment: an env var can be omitted from the next compose file and
+  // reproduce the outage silently.
+  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: 60 * 60 * 24 * 7,
